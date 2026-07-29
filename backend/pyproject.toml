@@ -1,0 +1,45 @@
+[project]
+name = "backend"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"  # pinned to 3.12 (the demo interpreter) for a reproducible
+# torch/docling lock; the heavy ML stack is only validated here.
+dependencies = [
+    "fastapi>=0.136.3",
+    "opencv-python>=4.13.0.92",
+    "pillow>=12.2.0",
+    "pydantic>=2.13.4",
+    "pydantic-settings>=2.14.1",
+    "pymupdf>=1.27.2.3",
+    "python-multipart>=0.0.29",
+    "sqlmodel>=0.0.38",
+    "uvicorn[standard]>=0.48.0",
+]
+
+[project.optional-dependencies]
+# OCR engines (Phase 3). Heavy + optional: the app boots without them (adapters
+# import lazily) and the mock engine covers tests.
+#   uv sync --extra ocr --extra langextract --extra agent
+# The "qwen-vl" engine is an OpenRouter VLM with no local models — it reuses the
+# `agent` extra's `openai` client, so there's nothing extra to install for it.
+docling = ["docling"]
+ocr = ["docling"]
+# Structuring (Phase 4). Optional + lazily imported like the OCR engines; the
+# "mock" provider covers tests. Install with: uv sync --extra langextract
+# (the [openai] extra adds the OpenAI-compatible client used for OpenRouter).
+langextract = ["langextract[openai]"]
+# Agent decision layer (Phase 5) + the "qwen-vl" OCR engine. The OpenAI-compatible
+# client for OpenRouter; lazily imported, "mock" provider covers tests. uv sync --extra agent
+agent = ["openai"]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.0.3",
+]
+
+[tool.uv]
+# Supply-chain hardening for PyPI-sourced packages: refuse to install any version
+# published after this date, giving the community time to detect/yank malicious packages
+# before they reach us. Bump forward periodically (≈weekly). Override per-invocation for
+# urgent security updates, e.g. `uv sync --exclude-newer 2026-05-30`.
+exclude-newer = "2026-05-25T00:00:00Z"
