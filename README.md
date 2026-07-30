@@ -1,7 +1,4 @@
-# Document Auto-Approval System
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Made By Agents](https://img.shields.io/badge/Made%20By%20Agents-madebyagents.com-55D44C?labelColor=1B1C1C)](https://www.madebyagents.com)
+# DataDynamos Document Auto-Approval System
 
 A proof-of-concept that ingests contracts & invoices, pre-scans them for quality, runs
 OCR (**Qwen3-VL / Docling**), structures the result into approval-relevant fields with
@@ -25,7 +22,7 @@ so OCR engines can be compared side-by-side on camera.
 ## Setup
 
 ```bash
-git clone <repo> && cd doc-approval-system
+git clone https://github.com/vnrtumu/DataDynamos.git && cd DataDynamos
 
 # 1. Install everything (backend deps + frontend).
 make install
@@ -82,7 +79,3 @@ at `needs_review`.
 ```bash
 make test   # backend pytest — fully offline (mock OCR engine + mock LLM provider, no API key)
 ```
-
-## License
-
-MIT © 2026 Made By Agents — see [LICENSE](LICENSE).
