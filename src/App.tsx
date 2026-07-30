@@ -18,7 +18,7 @@ function Shell() {
             <ShieldCheck className="size-4.5" />
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="font-semibold tracking-tight">Made By Agents</span>
+            <span className="font-semibold tracking-tight">DataDynamos</span>
             <span className="text-sm text-muted-foreground">
               Document Approval
             </span>
