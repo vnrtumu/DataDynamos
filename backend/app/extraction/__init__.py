@@ -8,12 +8,14 @@ from __future__ import annotations
 
 from app.models import DocType
 
-from . import contract, invoice
+from . import cms1500, ub04, unstructured_claim
 from .base import DocTypeSpec
 
 SPECS: dict[DocType, DocTypeSpec] = {
-    DocType.invoice: invoice.SPEC,
-    DocType.contract: contract.SPEC,
+    DocType.cms1500: cms1500.SPEC,
+    DocType.cms1500_multi: cms1500.SPEC,
+    DocType.ub04: ub04.SPEC,
+    DocType.unstructured_claim: unstructured_claim.SPEC,
 }
 
 

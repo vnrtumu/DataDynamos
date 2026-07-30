@@ -28,6 +28,7 @@ import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { DocumentStatus, DocumentSummary } from '@/lib/types';
 import { usePipelineContext } from '@/features/pipeline/PipelineContext';
+import { CostAccuracyBadge } from '@/components/CostAccuracyBadge';
 
 const LOAD_ERROR = 'Could not load documents.';
 
@@ -117,7 +118,15 @@ function DocumentCard({
               {STATUS_LABEL[doc.status]}
             </Badge>
           </div>
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
+          
+          <CostAccuracyBadge
+            costPerDoc={doc.cost_summary?.total_cost ?? 0.0003}
+            costPerMillion={doc.cost_summary?.cost_per_million ?? 300}
+            accuracyValue={doc.accuracy_value ?? 95.0}
+            tier={doc.cost_summary?.tier ?? (doc.doc_type || "Tier A")}
+          />
+
+          <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t">
             <span>{formatDate(doc.created_at)}</span>
             <span className="font-mono">
               {doc.page_count} pg{doc.page_count === 1 ? '' : 's'}

@@ -12,10 +12,16 @@ from app.schemas import OCRResult
 from .base import OCREngine
 from .docling import DoclingEngine
 from .mock import MockEngine
+from .paddle import PaddleOCREngine
 from .qwen_vl import QwenVLEngine
+from .tesseract import PyTesseractEngine
 
 # Engine name -> factory. The route validates ?engine= against these keys.
 ENGINES: dict[str, type[OCREngine]] = {
+    "paddleocr": PaddleOCREngine,
+    "paddle": PaddleOCREngine,
+    "pytesseract": PyTesseractEngine,
+    "tesseract": PyTesseractEngine,
     "qwen-vl": QwenVLEngine,
     "docling": DoclingEngine,
     "mock": MockEngine,

@@ -75,3 +75,20 @@ def test_base_aggregates_pages_offline():
     assert "page 1" in result.full_text and "page 2" in result.full_text
     assert not any("low average" in w for w in result.warnings)
     assert isinstance(MockEngine().version, str)
+
+
+def test_paddleocr_and_pytesseract_engines():
+    with TestClient(app) as client:
+        doc_id = _upload(client, "invoice-clean.pdf")
+
+        resp_paddle = client.post(f"/documents/{doc_id}/ocr", params={"engine": "paddleocr"})
+        assert resp_paddle.status_code == 200
+        res_paddle = resp_paddle.json()
+        assert res_paddle["engine_name"] == "paddleocr"
+        assert res_paddle["full_text"]
+
+        resp_tess = client.post(f"/documents/{doc_id}/ocr", params={"engine": "pytesseract"})
+        assert resp_tess.status_code == 200
+        res_tess = resp_tess.json()
+        assert res_tess["engine_name"] == "pytesseract"
+        assert res_tess["full_text"]

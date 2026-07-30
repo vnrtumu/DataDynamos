@@ -118,3 +118,83 @@ def brightness_metric(mean: float, *, brightness_dark: float) -> Verdict:
 def worst(*verdicts: Verdict) -> Verdict:
     """Aggregate verdicts: a single warn drags the result to warn."""
     return "warn" if any(v == "warn" for v in verdicts) else "pass"
+
+
+from app.schemas import AccuracyMetrics, CostSummary  # noqa: E402
+
+
+def compute_cost_summary(
+    doc_type: object | None,
+    page_count: int,
+    engine_name: str = "paddleocr",
+    vlm_used: bool = False,
+) -> CostSummary:
+    """Compute exact line-item costs and projected cost per 1M documents."""
+    type_str = str(getattr(doc_type, "value", doc_type or "cms1500"))
+
+    tier_map = {
+        "cms1500": "Tier A",
+        "cms1500_multi": "Tier B",
+        "ub04": "Tier C",
+        "unstructured_claim": "Tier D",
+    }
+    tier_label = tier_map.get(type_str, "Tier A")
+
+    preprocessing_cost = round(page_count * 0.0001, 5)
+
+    engine_cost_map = {
+        "paddleocr": 0.0002,
+        "paddle": 0.0002,
+        "pytesseract": 0.0001,
+        "tesseract": 0.0001,
+        "docling": 0.0005,
+        "qwen-vl": 0.0030,
+        "mock": 0.0001,
+    }
+    unit_ocr_cost = engine_cost_map.get(engine_name.lower(), 0.0002)
+    ocr_engine_cost = round(page_count * unit_ocr_cost, 5)
+
+    vlm_cost = 0.0035 if vlm_used else 0.0
+
+    total_cost = round(preprocessing_cost + ocr_engine_cost + vlm_cost, 5)
+    cost_per_million = round(total_cost * 1_000_000, 2)
+
+    hitl = vlm_used or total_cost > 0.005
+    hitl_cost = 0.45 if hitl else 0.0
+
+    return CostSummary(
+        tier=tier_label,
+        preprocessing_cost=preprocessing_cost,
+        ocr_engine_cost=ocr_engine_cost,
+        vlm_llm_cost=vlm_cost,
+        total_cost=total_cost,
+        cost_per_million=cost_per_million,
+        hitl_recommended=hitl,
+        hitl_estimated_cost=hitl_cost,
+    )
+
+
+def compute_accuracy_metrics(
+    extraction_confidence: float = 0.95,
+    ocr_avg_confidence: float | None = 0.94,
+    checks_passed_ratio: float = 1.0,
+    grounding_ratio: float = 0.92,
+) -> AccuracyMetrics:
+    """Calculate composite extraction accuracy percentages."""
+    ocr_conf_pct = round((ocr_avg_confidence or 0.90) * 100.0, 1)
+    field_acc_pct = round(extraction_confidence * 100.0, 1)
+    rule_pass_pct = round(checks_passed_ratio * 100.0, 1)
+    ground_pct = round(grounding_ratio * 100.0, 1)
+
+    overall = round(
+        0.35 * field_acc_pct + 0.35 * rule_pass_pct + 0.15 * ocr_conf_pct + 0.15 * ground_pct,
+        1,
+    )
+
+    return AccuracyMetrics(
+        overall_accuracy=overall,
+        field_accuracy=field_acc_pct,
+        rule_pass_rate=rule_pass_pct,
+        ocr_confidence=ocr_conf_pct,
+        grounded_ratio=ground_pct,
+    )

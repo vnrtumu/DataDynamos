@@ -1,4 +1,4 @@
-"""Database models (SQLModel tables) for documents and pipeline runs."""
+from __future__ import annotations
 
 from datetime import datetime, timezone
 from enum import Enum
@@ -30,10 +30,17 @@ class DocumentStatus(str, Enum):
 
 
 class DocType(str, Enum):
-    """The two document kinds this POC handles."""
+    """Healthcare Claim Document Formats (Tiers A-D)."""
 
-    contract = "contract"
-    invoice = "invoice"
+    cms1500 = "cms1500"
+    cms1500_multi = "cms1500_multi"
+    ub04 = "ub04"
+    unstructured_claim = "unstructured_claim"
+
+    @classmethod
+    def _missing_(cls, value: object) -> DocType:
+        # Gracefully handle legacy database rows ('invoice', 'contract')
+        return cls.unstructured_claim
 
 
 class Document(SQLModel, table=True):

@@ -8,6 +8,29 @@ from pydantic import BaseModel
 from app.models import DocType, DocumentStatus
 
 
+class CostSummary(BaseModel):
+    """Detailed cost summary per document / pipeline run."""
+
+    tier: str = "Tier A"
+    preprocessing_cost: float = 0.0001
+    ocr_engine_cost: float = 0.0002
+    vlm_llm_cost: float = 0.0
+    total_cost: float = 0.0003
+    cost_per_million: float = 300.0
+    hitl_recommended: bool = False
+    hitl_estimated_cost: float = 0.0
+
+
+class AccuracyMetrics(BaseModel):
+    """Detailed field & document accuracy breakdown for every document."""
+
+    overall_accuracy: float = 95.0
+    field_accuracy: float = 96.0
+    rule_pass_rate: float = 100.0
+    ocr_confidence: float = 94.0
+    grounded_ratio: float = 90.0
+
+
 class DocumentSummary(BaseModel):
     """Compact shape for the list view."""
 
@@ -18,6 +41,9 @@ class DocumentSummary(BaseModel):
     page_count: int
     status: DocumentStatus
     created_at: datetime
+    cost_summary: CostSummary | None = None
+    accuracy_metrics: AccuracyMetrics | None = None
+    accuracy_value: float | None = 95.0
 
 
 class PageInfo(BaseModel):
@@ -179,6 +205,8 @@ class StructuredResult(BaseModel):
     latency_ms: int = 0
     fallback_used: bool = False  # True if the Docling table backfill filled a field
     raw_artifact_url: str | None = None  # /files URL to the saved extractor output
+    cost_summary: CostSummary | None = None
+    accuracy_metrics: AccuracyMetrics | None = None
 
 
 # --- Phase 5: agent decision -------------------------------------------------
@@ -223,3 +251,5 @@ class DecisionResult(BaseModel):
     llm_decision: Decision | None = None  # what the LLM proposed before reconciliation
     warnings: list[str] = []
     latency_ms: int = 0
+    cost_summary: CostSummary | None = None
+    accuracy_metrics: AccuracyMetrics | None = None

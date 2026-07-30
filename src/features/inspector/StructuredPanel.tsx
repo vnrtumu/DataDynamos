@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { formatPct } from "@/lib/format";
 import { buildFieldTree, displayValue, type FieldLeaf } from "@/lib/fields";
 import type { Alignment, Grounding, StructuredResult } from "@/lib/types";
+import { CostSummaryCard } from "@/components/CostSummaryCard";
 
 function alignmentDot(grounding: Grounding | null | undefined): {
   cls: string;
@@ -97,42 +98,68 @@ function Leaf({
 }
 
 export function StructuredPanel({
-  structure,
+  result,
   onHoverField,
 }: {
-  structure: StructuredResult;
+  result: StructuredResult;
   onHoverField: (path: string | null) => void;
 }) {
-  const tree = buildFieldTree(structure.fields);
+  const tree = buildFieldTree(result.fields);
 
   return (
-    <div className="flex h-full flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="secondary" className="font-mono">
-          {structure.provider} · {structure.model}
-        </Badge>
-        <Badge
-          variant="outline"
-          className={cn(
-            "font-mono",
-            structure.extraction_confidence >= 0.6
-              ? "text-approve"
-              : "text-review",
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2 text-xs">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-muted-foreground">Provider:</span>
+          <span className="font-mono">{result.provider}</span>
+          <span className="text-muted-foreground">•</span>
+          <span className="font-medium text-muted-foreground">Model:</span>
+          <span className="font-mono">{result.model}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          {result.fallback_used && (
+            <Badge variant="outline" className="border-review/40 text-review-foreground">
+              Table fallback
+            </Badge>
           )}
-        >
-          extraction {formatPct(structure.extraction_confidence)}
-        </Badge>
-        {structure.fallback_used && (
-          <Badge variant="outline">table fallback</Badge>
-        )}
+          <Badge variant="outline">
+            {formatPct(result.extraction_confidence)} confidence
+          </Badge>
+        </div>
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        Hover a field to highlight its source on the page. Dots:{" "}
-        <span className="text-approve">exact</span> ·{" "}
-        <span className="text-review">partial</span> ·{" "}
-        <span className="text-muted-foreground">none</span>.
-      </p>
+      {/* Cost & Accuracy Summary Card */}
+      <CostSummaryCard cost={result.cost_summary ?? undefined} accuracy={result.accuracy_metrics ?? undefined} />
+
+      {/* Stage 7 HITL Review & Learning Feedback Loop */}
+      <div className="flex items-center justify-between gap-2 rounded-lg border border-purple-500/30 bg-purple-500/5 px-3 py-2 text-xs">
+        <div className="flex items-center gap-1.5 text-purple-400 font-medium">
+          <span>Stage 7 HITL Queue: Review & Feedback Feed</span>
+        </div>
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              const res = await fetch(`/documents/${result.document_id}/feedback`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  corrections: result.fields,
+                  notes: "User verified structured fields in Stage 7 HITL Queue",
+                }),
+              });
+              if (res.ok) {
+                alert("Stage 7 HITL Feedback Saved! LLM learning memory updated with correction rules for future documents.");
+              }
+            } catch (e) {
+              console.error(e);
+            }
+          }}
+          className="rounded-md bg-purple-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-purple-500 transition-colors shadow-xs"
+        >
+          Submit HITL Feedback & Update Learning Memory
+        </button>
+      </div>
 
       <ScrollArea className="flex-1 rounded-xl border">
         <div className="divide-y">
