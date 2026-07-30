@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from app.models import DocType
 
-from . import contract, invoice
+from . import cms1500, ub04, unstructured_claim
 from .base import (
     DecisionContext,
     Ruleset,
@@ -17,13 +17,17 @@ from .base import (
 )
 
 RULESETS: dict[DocType, Ruleset] = {
-    DocType.invoice: invoice.invoice_checks,
-    DocType.contract: contract.contract_checks,
+    DocType.cms1500: cms1500.cms1500_rules,
+    DocType.cms1500_multi: cms1500.cms1500_rules,
+    DocType.ub04: ub04.ub04_rules,
+    DocType.unstructured_claim: unstructured_claim.unstructured_claim_rules,
 }
 
 CITATION_PATHS: dict[DocType, list[str]] = {
-    DocType.invoice: invoice.CITATION_PATHS,
-    DocType.contract: contract.CITATION_PATHS,
+    DocType.cms1500: ["patient_name", "insured_id", "billing_provider_npi", "total_charge"],
+    DocType.cms1500_multi: ["patient_name", "insured_id", "billing_provider_npi", "total_charge"],
+    DocType.ub04: ["patient_name", "health_plan_id", "attending_physician_npi", "total_charges"],
+    DocType.unstructured_claim: ["patient_name", "provider_name", "total_amount"],
 }
 
 

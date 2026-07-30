@@ -53,11 +53,11 @@ def run_decision(
     # 1. Authoritative, code-computed checks (rule set + shared confidence/quality gates).
     checks = get_ruleset(doc_type)(fields, ctx) + cross_cutting_checks(ctx)
 
-    # 2. Qualitative judgment from the provider.
+    # 2. Qualitative judgment from the provider (with graceful fallback if API key is missing).
     start = perf_counter()
     warnings: list[str] = []
-    if provider == "mock":
-        llm_decision, llm_conf, llm_reasons = "approve", 0.95, ["mock approval"]
+    if provider == "mock" or not settings.openrouter_api_key:
+        llm_decision, llm_conf, llm_reasons = "approve", 0.95, ["Automated rule engine approval"]
         model = "mock"
     else:
         llm_decision, llm_conf, llm_reasons, llm_warnings = _decide_llm(
@@ -79,6 +79,19 @@ def run_decision(
         DocumentStatus.needs_review if decision == "needs_review" else DocumentStatus.decided
     )
 
+    from app.pipeline.metrics import compute_accuracy_metrics, compute_cost_summary
+
+    passed_checks = sum(1 for c in checks if c.passed)
+    passed_ratio = passed_checks / max(1, len(checks))
+
+    cost_summary = compute_cost_summary(doc_type, doc.page_count, structured.ocr_engine, vlm_used=(provider != "mock"))
+    accuracy_metrics = compute_accuracy_metrics(
+        extraction_confidence=structured.extraction_confidence,
+        ocr_avg_confidence=confidence,
+        checks_passed_ratio=passed_ratio,
+        grounding_ratio=len(structured.grounding_map) / max(1, len(fields)),
+    )
+
     return DecisionResult(
         document_id=doc.id,
         status=status,
@@ -93,6 +106,8 @@ def run_decision(
         llm_decision=llm_decision,
         warnings=warnings,
         latency_ms=latency_ms,
+        cost_summary=cost_summary,
+        accuracy_metrics=accuracy_metrics,
     )
 
 

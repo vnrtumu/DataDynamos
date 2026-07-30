@@ -1,8 +1,33 @@
 // TypeScript mirrors of the FastAPI backend schemas (backend/app/schemas.py).
 // Kept hand-maintained and minimal to match the JSON the API returns.
 
-export type DocType = "invoice" | "contract";
-export type OcrEngine = "qwen-vl" | "docling";
+export type DocType =
+  | "cms1500"
+  | "cms1500_multi"
+  | "ub04"
+  | "unstructured_claim";
+
+export type OcrEngine = "paddleocr" | "pytesseract" | "qwen-vl" | "docling" | "mock";
+
+export interface CostSummary {
+  tier: string;
+  preprocessing_cost: number;
+  ocr_engine_cost: number;
+  vlm_llm_cost: number;
+  total_cost: number;
+  cost_per_million: number;
+  hitl_recommended: boolean;
+  hitl_estimated_cost: number;
+}
+
+export interface AccuracyMetrics {
+  overall_accuracy: number;
+  field_accuracy: number;
+  rule_pass_rate: number;
+  ocr_confidence: number;
+  grounded_ratio: number;
+}
+
 export type DocumentStatus =
   | "uploaded"
   | "prescanned"
@@ -29,6 +54,9 @@ export interface DocumentSummary {
   page_count: number;
   status: DocumentStatus;
   created_at: string;
+  cost_summary?: CostSummary | null;
+  accuracy_metrics?: AccuracyMetrics | null;
+  accuracy_value?: number | null;
 }
 
 export interface PageInfo {

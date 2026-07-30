@@ -8,6 +8,7 @@ import { OcrTextPanel } from "@/features/inspector/OcrTextPanel";
 import { StructuredPanel } from "@/features/inspector/StructuredPanel";
 import { EngineComparison } from "@/features/inspector/EngineComparison";
 import { DecisionCard } from "@/features/decision/DecisionCard";
+import { ModelRationalePanel } from "@/features/inspector/ModelRationalePanel";
 
 function Pending({ label }: { label: string }) {
   return (
@@ -73,11 +74,12 @@ export function SplitInspector() {
           defaultValue="structured"
           className="flex min-h-0 flex-1 flex-col"
         >
-          <TabsList>
+          <TabsList className="grid grid-cols-5 w-full">
             <TabsTrigger value="ocr">OCR text</TabsTrigger>
             <TabsTrigger value="structured">Structured</TabsTrigger>
             <TabsTrigger value="decision">Decision</TabsTrigger>
             <TabsTrigger value="compare">Compare</TabsTrigger>
+            <TabsTrigger value="rationale" className="text-sky-400 font-semibold">Why OCR & LLM?</TabsTrigger>
           </TabsList>
 
           <TabsContent value="ocr" className="min-h-0 flex-1">
@@ -93,7 +95,7 @@ export function SplitInspector() {
           <TabsContent value="structured" className="min-h-0 flex-1">
             {structure ? (
               <StructuredPanel
-                structure={structure}
+                result={structure}
                 onHoverField={setHoveredField}
               />
             ) : perStageStatus.structure === "running" ? (
@@ -123,6 +125,10 @@ export function SplitInspector() {
               onRun={runEngineComparison}
               running={perStageStatus.ocr === "running"}
             />
+          </TabsContent>
+
+          <TabsContent value="rationale" className="min-h-0 flex-1">
+            <ModelRationalePanel />
           </TabsContent>
         </Tabs>
       </div>

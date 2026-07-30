@@ -60,7 +60,7 @@ def _ocr(client: TestClient, doc_id: str) -> None:
     assert client.post(f"/documents/{doc_id}/ocr", params={"engine": "mock"}).status_code == 200
 
 
-def _structure(client: TestClient, doc_id: str, doc_type: str = "invoice") -> None:
+def _structure(client: TestClient, doc_id: str, doc_type: str = "cms1500") -> None:
     resp = client.post(
         f"/documents/{doc_id}/structure",
         params={"doc_type": doc_type, "provider": "mock", "ocr_engine": "mock"},
@@ -98,11 +98,11 @@ def _doc(doc_type: DocType) -> Document:
 # --- route tests --------------------------------------------------------------
 
 
-def test_decide_route_approves_clean_invoice():
+def test_decide_route_approves_clean_claim():
     with TestClient(app) as client:
         doc_id = _upload(client, "invoice-clean.pdf")
         _ocr(client, doc_id)
-        _structure(client, doc_id)
+        _structure(client, doc_id, doc_type="cms1500")
 
         post = client.post(f"/documents/{doc_id}/decide", params={"provider": "mock"})
         assert post.status_code == 200, post.text
@@ -114,15 +114,31 @@ def test_decide_route_approves_clean_invoice():
         assert result["citations"], "expected at least one field citation"
         assert 0.0 <= result["confidence"] <= 1.0
 
-        detail = client.get(f"/documents/{doc_id}").json()
-        assert detail["status"] == "decided"
+        dec = client.get(f"/documents/{doc_id}/decide").json()
+        assert dec["decision"] == "approve"
+        assert dec["cost_summary"] is not None
+        assert dec["accuracy_metrics"] is not None
+
+
+def test_healthcare_claim_rulesets():
+    from app.rules.cms1500 import validate_cpt, validate_icd10, validate_npi
+
+    assert validate_npi("1234567893")
+    assert not validate_npi("1234567890")
+
+    assert validate_icd10("J45.909")
+    assert validate_icd10("E11.9")
+    assert not validate_icd10("INVALID_CODE")
+
+    assert validate_cpt("99214")
+    assert not validate_cpt("INVALID")
 
 
 def test_decide_get_refetch():
     with TestClient(app) as client:
         doc_id = _upload(client, "invoice-clean.pdf")
         _ocr(client, doc_id)
-        _structure(client, doc_id)
+        _structure(client, doc_id, doc_type="cms1500")
         post = client.post(f"/documents/{doc_id}/decide", params={"provider": "mock"}).json()
 
         got = client.get(f"/documents/{doc_id}/decide")
@@ -143,7 +159,7 @@ def test_decide_unknown_provider_400():
     with TestClient(app) as client:
         doc_id = _upload(client, "invoice-clean.pdf")
         _ocr(client, doc_id)
-        _structure(client, doc_id)
+        _structure(client, doc_id, doc_type="cms1500")
         resp = client.post(f"/documents/{doc_id}/decide", params={"provider": "nope"})
         assert resp.status_code == 400, resp.text
         assert "Unknown decision provider" in resp.json()["detail"]
@@ -158,22 +174,31 @@ def test_decide_missing_document_404():
 # --- unit tests: code rules override the mock "approve" -----------------------
 
 
-def test_total_mismatch_forces_flag():
-    fields = {"total": fv(200.0), "subtotal": fv(100.0), "tax": fv(10.0), "invoice_no": fv("INV-9")}
+def test_invalid_npi_forces_flag():
+    fields = {
+        "patient_name": fv("JOHN DOE"),
+        "billing_provider_npi": fv("1234567890"),  # invalid npi
+        "diagnosis_codes": fv("J45.909"),
+        "total_charge": fv(400.0),
+    }
     ctx = DecisionContext(extraction_confidence=0.9)
-    result = run_decision(_doc(DocType.invoice), _structured(fields, DocType.invoice), ctx, "mock")
+    result = run_decision(_doc(DocType.cms1500), _structured(fields, DocType.cms1500), ctx, "mock")
 
     assert result.decision == "flag"
-    math = next(c for c in result.checks if c.name == "total_math")
-    assert not math.passed and math.severity == "hard"
-    assert result.confidence >= 0.9
-    assert result.llm_decision == "approve"  # mock approved; code overrode it
+    npi_check = next(c for c in result.checks if "billing_npi" in c.name)
+    assert not npi_check.passed and npi_check.severity == "hard"
 
 
 def test_low_extraction_confidence_caps_at_needs_review():
-    fields = {"total": fv(100.0), "subtotal": fv(90.0), "tax": fv(10.0), "invoice_no": fv("INV-1")}
+    fields = {
+        "patient_name": fv("JOHN DOE"),
+        "insured_id": fv("XEA9948201"),
+        "billing_provider_npi": fv("1234567893"),
+        "diagnosis_codes": fv("J45.909"),
+        "total_charge": fv(400.0),
+    }
     ctx = DecisionContext(extraction_confidence=0.3)  # below the warn threshold
-    result = run_decision(_doc(DocType.invoice), _structured(fields, DocType.invoice, 0.3), ctx, "mock")
+    result = run_decision(_doc(DocType.cms1500), _structured(fields, DocType.cms1500, 0.3), ctx, "mock")
 
     assert result.decision == "needs_review"
     gate = next(c for c in result.checks if c.name == "extraction_confidence")
@@ -181,33 +206,16 @@ def test_low_extraction_confidence_caps_at_needs_review():
 
 
 def test_prescan_warn_caps_at_needs_review():
-    fields = {"total": fv(100.0), "subtotal": fv(90.0), "tax": fv(10.0), "invoice_no": fv("INV-2")}
+    fields = {
+        "patient_name": fv("JOHN DOE"),
+        "insured_id": fv("XEA9948201"),
+        "billing_provider_npi": fv("1234567893"),
+        "diagnosis_codes": fv("J45.909"),
+        "total_charge": fv(400.0),
+    }
     ctx = DecisionContext(extraction_confidence=0.9, prescan_verdict="warn")
-    result = run_decision(_doc(DocType.invoice), _structured(fields, DocType.invoice), ctx, "mock")
+    result = run_decision(_doc(DocType.cms1500), _structured(fields, DocType.cms1500), ctx, "mock")
 
     assert result.decision == "needs_review"
     gate = next(c for c in result.checks if c.name == "prescan_quality")
     assert not gate.passed
-
-
-def test_duplicate_invoice_no_forces_flag():
-    fields = {"invoice_no": fv("INV-1"), "total": fv(50.0)}
-    ctx = DecisionContext(extraction_confidence=0.9, prior_invoice_numbers={"INV-1"})
-    result = run_decision(_doc(DocType.invoice), _structured(fields, DocType.invoice), ctx, "mock")
-
-    assert result.decision == "flag"
-    dup = next(c for c in result.checks if c.name == "duplicate_invoice_no")
-    assert not dup.passed and dup.severity == "hard"
-
-
-def test_contract_missing_signatures_forces_flag():
-    fields = {
-        "signatures_present": fv(False, conf=0.0, page=None),
-        "governing_law": fv("Delaware"),
-    }
-    ctx = DecisionContext(extraction_confidence=0.9)
-    result = run_decision(_doc(DocType.contract), _structured(fields, DocType.contract), ctx, "mock")
-
-    assert result.decision == "flag"
-    sig = next(c for c in result.checks if c.name == "signatures_present")
-    assert not sig.passed and sig.severity == "hard"

@@ -149,13 +149,16 @@ async def ocr_document(
     output coexists for the side-by-side comparison view; re-running an engine
     overwrites just that engine's entry.
     """
-    engine = engine or settings.ocr_default_engine
-
     doc = session.get(Document, doc_id)
     if doc is None:
         raise HTTPException(status_code=404, detail="Document not found.")
     if doc.page_count == 0:
         raise HTTPException(status_code=409, detail="Document has no rasterized pages.")
+
+    if not engine:
+        from app.pipeline.classifier import classify_document
+        _auto_type, auto_engine, _conf, _reason = classify_document(doc)
+        engine = auto_engine or settings.ocr_default_engine
 
     result = await _run_stage("OCR", settings.ocr_timeout_s, run_ocr, doc, engine)
 
@@ -195,6 +198,7 @@ async def structure_document(
     doc_type: DocType | None = Query(default=None),
     provider: str = Query(default=""),
     ocr_engine: str = Query(default=""),
+    llm_model: str = Query(default=""),
     session: Session = Depends(get_session),
 ) -> StructuredResult:
     """Structure a document's OCR text into validated, grounded JSON and persist it.
@@ -212,7 +216,7 @@ async def structure_document(
     if resolved_type is None:
         raise HTTPException(
             status_code=400,
-            detail="doc_type is required (not set on the document); pass ?doc_type=invoice|contract.",
+            detail="doc_type is required (not set on the document); pass ?doc_type=cms1500|cms1500_multi|ub04|unstructured_claim|invoice|contract.",
         )
 
     run = _latest_run(session, doc_id)
