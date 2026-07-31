@@ -161,11 +161,11 @@ export async function runOcr(
 
 export async function runStructure(
   id: string,
-  p: { docType: DocType; ocrEngine: OcrEngine },
+  p: { docType: DocType; ocrEngine: OcrEngine; llmModel?: string },
 ): Promise<StructuredResult> {
   return request<StructuredResult>(`/documents/${id}/structure`, {
     method: "POST",
-    query: { doc_type: p.docType, ocr_engine: p.ocrEngine },
+    query: { doc_type: p.docType, ocr_engine: p.ocrEngine, llm_model: p.llmModel },
   });
 }
 
