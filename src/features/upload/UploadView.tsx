@@ -32,13 +32,15 @@ export function UploadView() {
   const {
     docType,
     activeEngine,
+    activeLlmModel,
     setDocType,
     setActiveEngine,
+    setLlmModel,
     ingestFile,
     ingesting,
   } = usePipelineContext();
 
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(true);
 
   return (
     <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-8 px-4 py-8 sm:px-6">
@@ -140,7 +142,7 @@ export function UploadView() {
                   <Sparkles className="size-3.5 text-purple-400" />
                   3. LLM Structuring Model Selection (Stage 5a/5b):
                 </label>
-                <LlmSelect value="deepseek-v4" onChange={() => {}} disabled={ingesting} />
+                <LlmSelect value={activeLlmModel} onChange={setLlmModel} disabled={ingesting} />
               </div>
             </div>
           )}

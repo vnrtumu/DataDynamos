@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ShieldCheck, Layers, FileSpreadsheet } from "lucide-react";
+import { ShieldCheck, Layers, FileSpreadsheet, Sliders } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
@@ -10,10 +10,11 @@ import {
 import { UploadView } from "@/features/upload/UploadView";
 import { Workspace } from "@/features/Workspace";
 import { DeliverablesView } from "@/features/deliverables/DeliverablesView";
+import { RuleSettingsView } from "@/features/rules/RuleSettingsView";
 
 function Shell() {
   const { document } = usePipelineContext();
-  const [activeTab, setActiveTab] = useState<"workspace" | "deliverables">("workspace");
+  const [activeTab, setActiveTab] = useState<"workspace" | "rules" | "deliverables">("workspace");
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
@@ -42,6 +43,15 @@ function Shell() {
               Claims Workspace
             </Button>
             <Button
+              variant={activeTab === "rules" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setActiveTab("rules")}
+              className="text-xs gap-1.5"
+            >
+              <Sliders className="size-3.5 text-purple-400" />
+              Rule Defining Settings
+            </Button>
+            <Button
               variant={activeTab === "deliverables" ? "secondary" : "ghost"}
               size="sm"
               onClick={() => setActiveTab("deliverables")}
@@ -57,6 +67,8 @@ function Shell() {
       <main className="flex flex-1 flex-col">
         {activeTab === "deliverables" ? (
           <DeliverablesView />
+        ) : activeTab === "rules" ? (
+          <RuleSettingsView />
         ) : document ? (
           <Workspace />
         ) : (

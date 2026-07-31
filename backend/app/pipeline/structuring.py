@@ -27,14 +27,27 @@ from app import storage
 
 PROVIDERS = {"langextract", "mock"}
 
+MODEL_ALIASES = {
+    "deepseek-v4": "deepseek/deepseek-v4-flash",
+    "gpt-4o": "openai/gpt-4o",
+    "claude-3.5-sonnet": "anthropic/claude-3.5-sonnet",
+    "qwen-2.5-72b": "qwen/qwen-2.5-72b-instruct",
+    "small-vision-vlm": "qwen/qwen-2.5-vl-7b-instruct",
+}
+
 
 def run_structuring(
     doc: Document,
     ocr_result: OCRResult,
     doc_type: DocType,
     provider: str = "",
+    llm_model: str = "",
 ) -> StructuredResult:
     """Structure a document's OCR text into a validated, grounded result."""
+    if llm_model == "mock":
+        provider = "mock"
+
+    target_model = MODEL_ALIASES.get(llm_model, llm_model) or settings.structuring_model
     provider = provider or settings.structuring_provider
     if provider not in PROVIDERS:
         raise ValueError(
@@ -51,8 +64,8 @@ def run_structuring(
         model = "mock"
     else:
         try:
-            flats, artifact = _structure_langextract(spec, ocr_result.full_text)
-            model = settings.structuring_model
+            flats, artifact = _structure_langextract(spec, ocr_result.full_text, model_id=target_model)
+            model = target_model
         except Exception as exc:
             flats = _structure_mock(doc_type, ocr_result.full_text)
             artifact = None
@@ -116,7 +129,7 @@ def run_structuring(
 # --- providers ----------------------------------------------------------------
 
 
-def _structure_langextract(spec, full_text: str) -> tuple[list[FlatExtraction], str]:
+def _structure_langextract(spec, full_text: str, model_id: str = "") -> tuple[list[FlatExtraction], str]:
     """Run LangExtract against OpenRouter and normalize to FlatExtraction[]."""
     if not settings.openrouter_api_key:
         raise ValueError("OPENROUTER_API_KEY is not set; the langextract provider needs it.")
@@ -125,7 +138,7 @@ def _structure_langextract(spec, full_text: str) -> tuple[list[FlatExtraction], 
     from langextract.factory import ModelConfig
 
     config = ModelConfig(
-        model_id=settings.structuring_model,
+        model_id=model_id or settings.structuring_model,
         provider="openai",
         provider_kwargs={
             "api_key": settings.openrouter_api_key,
