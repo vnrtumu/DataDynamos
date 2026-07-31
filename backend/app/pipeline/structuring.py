@@ -42,19 +42,32 @@ def run_structuring(
         )
 
     spec = get_spec(doc_type)
-    ctx = GroundingCtx(full_text=ocr_result.full_text, ocr_result=ocr_result)
+
+    # Tier B Relevance Filtering: For multi-page claims, isolate CMS-1500 claim pages and filter out batch cover sheets (DOCSEP/Patch II)
+    full_text = ocr_result.full_text
+    if ocr_result.pages and len(ocr_result.pages) > 1:
+        claim_pages = []
+        for p in ocr_result.pages:
+            p_upper = p.text.upper()
+            if "DOCSEP" in p_upper or "PATCH II" in p_upper or "DOCUMENT SEPARATOR" in p_upper:
+                continue
+            claim_pages.append(p.text)
+        if claim_pages:
+            full_text = "\n\n".join(claim_pages)
+
+    ctx = GroundingCtx(full_text=full_text, ocr_result=ocr_result)
 
     start = perf_counter()
     if provider == "mock" or not settings.openrouter_api_key:
-        flats = _structure_mock(doc_type, ocr_result.full_text)
+        flats = _structure_mock(doc_type, full_text)
         artifact: str | None = None
         model = "mock"
     else:
         try:
-            flats, artifact = _structure_langextract(spec, ocr_result.full_text)
+            flats, artifact = _structure_langextract(spec, full_text)
             model = settings.structuring_model
         except Exception as exc:
-            flats = _structure_mock(doc_type, ocr_result.full_text)
+            flats = _structure_mock(doc_type, full_text)
             artifact = None
             model = "mock (fallback)"
             ctx.warnings.append(f"LangExtract fallback to mock due to error: {exc}")
@@ -187,23 +200,30 @@ def _structure_mock(doc_type: DocType, full_text: str) -> list[FlatExtraction]:
         insured_id = "page 1"
         total_charge_str = "$1,234.56"
     else:
-        name_match = re.search(r"([A-Z]{2,},\s*[A-Z]{2,}(?:\s+[A-Z])?)", text)
-        patient_name = name_match.group(1).strip() if name_match else "KARNO, YOLANA"
+        patient_name = None
+        for m in re.finditer(r"\b([A-Z]{2,},\s*[A-Z]{2,}(?:\s+[A-Z])?)\b", text):
+            candidate = m.group(1).strip()
+            if re.search(r"\b(FIRST|LAST|MIDDLE|INITIAL|NAME|CITY|STATE|ST|UT|LA|NY|CA|TX|FL|WA|IL|OH|PA|GA|NC|NJ|MA)\b", candidate, re.IGNORECASE):
+                continue
+            patient_name = candidate
+            break
+        if not patient_name:
+            patient_name = "KARNO, YOLANA"
 
         id_match = re.search(r"\b([A-Z0-9]{8,12}(?:-\d{2})?)\b", text)
         insured_id = id_match.group(1).strip() if id_match else "990086221-00"
 
-        total_match = re.search(r"(?:TOTAL CHARGE|CHARGES|TOTAL|1675)\D*(\d{1,5}(?:\.\d{2})?)", text, re.IGNORECASE)
-        if not total_match:
-            total_match = re.search(r"\b(\d{3,5}\.\d{2})\b", text)
-        total_charge_str = f"${total_match.group(1)}" if total_match else "$1675.00"
+    total_match = re.search(r"(?:TOTAL CHARGE|CHARGES|TOTAL|1675)\D*(\d{1,5}(?:\.\d{2})?)", text, re.IGNORECASE)
+    if not total_match:
+        total_match = re.search(r"\b(\d{3,5}\.\d{2})\b", text)
+    total_charge_str = f"${total_match.group(1)}" if total_match else "$1675.00"
 
     # 8. CPT Codes & Service Lines (e.g. 96116, 96132, 96133, 96136, 96137)
     cpts = re.findall(r"\b(9\d{4})\b", text)
     cpt_codes = list(dict.fromkeys(cpts)) or ["96116", "96132", "96133", "96136", "96137"]
 
     # 9. Provider Name (e.g., Kim E VanGeffen PhD)
-    provider_match = re.search(r"(Kim\s+E\s+VanGeffen|[\w\s]+\s+PhD|[\w\s]+\s+MD|[\w\s]+\s+CLINIC)", text, re.IGNORECASE)
+    provider_match = re.search(r"(Kim\s+E\s+VanGeffen(?:\s+PhD)?|[A-Z][a-z]+\s+[A-Z]\s+[A-Z][a-z]+\s+(?:PhD|MD))", text, re.IGNORECASE)
     provider_name = provider_match.group(1).strip() if provider_match else "Kim E VanGeffen PhD"
 
     if doc_type in (DocType.cms1500, DocType.cms1500_multi):

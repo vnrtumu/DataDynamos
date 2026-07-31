@@ -76,7 +76,7 @@ function initialState(): PipelineState {
     perStageStatus: idleStatus(),
     perStageTiming: {},
     activeEngine: "docling",
-    docType: "invoice",
+    docType: "cms1500",
     ingesting: false,
     error: null,
   };
@@ -142,7 +142,12 @@ function reducer(state: PipelineState, action: Action): PipelineState {
         ingesting: true,
       };
     case "INGEST_DONE":
-      return { ...state, ingesting: false, document: action.document };
+      return {
+        ...state,
+        ingesting: false,
+        document: action.document,
+        docType: action.document.doc_type ?? state.docType,
+      };
     case "INGEST_ERROR":
       return { ...state, ingesting: false };
     case "STAGE_START":
@@ -328,17 +333,18 @@ export function usePipeline(): UsePipeline {
     async (file: File) => {
       dispatch({ type: "INGEST_START" });
       const engine = state.activeEngine;
-      const docType = state.docType;
       let doc: DocumentDetail;
       try {
-        doc = await uploadDocument(file, docType);
+        // Pass undefined for docType so backend AI classifier auto-detects Tier A-D format
+        doc = await uploadDocument(file, undefined);
       } catch (e) {
         dispatch({ type: "INGEST_ERROR" });
         toast.error("Upload failed", { description: errMessage(e) });
         return;
       }
+      const resolvedDocType = doc.doc_type ?? state.docType;
       dispatch({ type: "INGEST_DONE", document: doc });
-      await runAll(doc.id, engine, docType);
+      await runAll(doc.id, engine, resolvedDocType);
     },
     [state.activeEngine, state.docType, runAll],
   );

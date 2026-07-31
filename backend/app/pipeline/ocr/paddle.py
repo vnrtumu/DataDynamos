@@ -20,7 +20,7 @@ class PaddleOCREngine(OCREngine):
     name = "paddleocr"
     version = "2.7.0"
 
-    def _ocr_pages(self, doc_id: str, pages: list[Path]) -> tuple[list[OCRPage], list[str]]:
+    def _ocr_pages(self, doc_id: str, pages: list[Path], progress_cb=None) -> tuple[list[OCRPage], list[str]]:
         warnings: list[str] = []
         ocr_pages: list[OCRPage] = []
 
@@ -59,12 +59,17 @@ class PaddleOCREngine(OCREngine):
                 except Exception as exc:
                     warnings.append(f"PaddleOCR execution warning on page {idx}: {exc}")
 
-            # Fallback if paddle OCR didn't extract text or wasn't loaded
+            # Fallback to Docling Engine for real OCR extraction if PaddleOCR is not installed
             if not page_text_lines:
-                # Synthetic/heuristic extraction for test/demo environments
-                fallback_blocks = self._fallback_extract(img, idx, w, h)
-                blocks.extend(fallback_blocks)
-                page_text_lines = [b.text for b in blocks]
+                try:
+                    from app.pipeline.ocr.docling import DoclingEngine
+                    docling_pages, docling_warns = DoclingEngine()._ocr_pages(doc_id, [page_path])
+                    if docling_pages and docling_pages[0].blocks:
+                        blocks.extend(docling_pages[0].blocks)
+                        page_text_lines = [b.text for b in blocks]
+                        warnings.extend(docling_warns)
+                except Exception as exc:
+                    warnings.append(f"PaddleOCR fallback to Docling failed: {exc}")
 
             full_text = "\n".join(page_text_lines)
             avg_conf = (
@@ -83,22 +88,7 @@ class PaddleOCREngine(OCREngine):
                     char_count=len(full_text),
                 )
             )
+            if progress_cb:
+                progress_cb(idx)
 
         return ocr_pages, warnings
-
-    def _fallback_extract(self, img: np.ndarray | None, page: int, w: int, h: int) -> list[OCRBlock]:
-        """Robust text extraction fallback when standalone Paddle C++ runtime is not installed."""
-        blocks: list[OCRBlock] = []
-        # Return generic form structure lines based on common image layout
-        sample_lines = [
-            ("PATIENT NAME: JOHN DOE", (50, 50, 350, 80), 0.96),
-            ("DOB: 1985-04-12  SEX: M  INSURED ID: XEA9948201", (50, 90, 600, 120), 0.95),
-            ("BILLING PROVIDER: METRO HEALTHCARE INC NPI: 1234567893", (50, 130, 650, 160), 0.97),
-            ("DIAGNOSIS CODES: ICD-10 J45.909, E11.9", (50, 170, 500, 200), 0.94),
-            ("SERVICE LINE 1: CPT 99214  DOS: 2026-06-15  UNITS: 1  CHARGE: $250.00", (50, 220, 700, 250), 0.98),
-            ("SERVICE LINE 2: CPT 80053  DOS: 2026-06-15  UNITS: 1  CHARGE: $150.00", (50, 260, 700, 290), 0.97),
-            ("TOTAL CHARGE: $400.00", (50, 310, 300, 340), 0.99),
-        ]
-        for text, bbox, conf in sample_lines:
-            blocks.append(OCRBlock(page=page, text=text, bbox=bbox, confidence=conf))
-        return blocks

@@ -19,7 +19,7 @@ class MockEngine(OCREngine):
     name = "mock"
     version = "1.0"
 
-    def _ocr_pages(self, doc_id: str, pages: list[Path]) -> tuple[list[OCRPage], list[str]]:
+    def _ocr_pages(self, doc_id: str, pages: list[Path], progress_cb=None) -> tuple[list[OCRPage], list[str]]:
         out: list[OCRPage] = []
         for page_no, _ in enumerate(pages, start=1):
             blocks = [
@@ -50,4 +50,6 @@ class MockEngine(OCREngine):
             ]
             text = "\n".join(b.text for b in blocks)
             out.append(OCRPage(page=page_no, text=text, blocks=blocks, tables=tables))
+            if progress_cb:
+                progress_cb(page_no)
         return out, []

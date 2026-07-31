@@ -74,7 +74,7 @@ class DoclingEngine(OCREngine):
     name = "docling"
     version = "docling"
 
-    def _ocr_pages(self, doc_id: str, pages: list[Path]) -> tuple[list[OCRPage], list[str]]:
+    def _ocr_pages(self, doc_id: str, pages: list[Path], progress_cb=None) -> tuple[list[OCRPage], list[str]]:
         conv = _converter()
         out: list[OCRPage] = []
         warnings: list[str] = []
@@ -127,6 +127,9 @@ class DoclingEngine(OCREngine):
                     markdown_url=markdown_url,
                 )
             )
+            # Report this page as done
+            if progress_cb:
+                progress_cb(page_no)
 
         warnings.append("docling does not expose per-block OCR confidence")
         return out, warnings

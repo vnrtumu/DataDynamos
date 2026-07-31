@@ -1,6 +1,7 @@
-import { CornerDownRight } from "lucide-react";
+import { useState } from "react";
+import { CornerDownRight, CheckCircle2, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,
   TableBody,
@@ -14,6 +15,7 @@ import { formatPct } from "@/lib/format";
 import { buildFieldTree, displayValue, type FieldLeaf } from "@/lib/fields";
 import type { Alignment, Grounding, StructuredResult } from "@/lib/types";
 import { CostSummaryCard } from "@/components/CostSummaryCard";
+import { submitHitlFeedback } from "@/lib/api";
 
 function alignmentDot(grounding: Grounding | null | undefined): {
   cls: string;
@@ -105,6 +107,28 @@ export function StructuredPanel({
   onHoverField: (path: string | null) => void;
 }) {
   const tree = buildFieldTree(result.fields);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmitFeedback = async () => {
+    setSubmitting(true);
+    try {
+      const res = await submitHitlFeedback(result.document_id, {
+        corrections: result.fields,
+        notes: "User verified structured fields in Stage 7 HITL Queue",
+      });
+      setSubmitted(true);
+      toast.success("Stage 7 HITL Feedback Recorded!", {
+        description: res.message || "Learning memory updated with correction rules.",
+      });
+    } catch (e) {
+      toast.error("Feedback Submission Failed", {
+        description: e instanceof Error ? e.message : "Could not save HITL feedback.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
@@ -138,30 +162,33 @@ export function StructuredPanel({
         </div>
         <button
           type="button"
-          onClick={async () => {
-            try {
-              const res = await fetch(`/documents/${result.document_id}/feedback`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  corrections: result.fields,
-                  notes: "User verified structured fields in Stage 7 HITL Queue",
-                }),
-              });
-              if (res.ok) {
-                alert("Stage 7 HITL Feedback Saved! LLM learning memory updated with correction rules for future documents.");
-              }
-            } catch (e) {
-              console.error(e);
-            }
-          }}
-          className="rounded-md bg-purple-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-purple-500 transition-colors shadow-xs"
+          disabled={submitting || submitted}
+          onClick={handleSubmitFeedback}
+          className={cn(
+            "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold text-white transition-all shadow-xs cursor-pointer",
+            submitted
+              ? "bg-emerald-600 hover:bg-emerald-600 cursor-default"
+              : "bg-purple-600 hover:bg-purple-500 active:scale-95",
+            submitting && "opacity-75 pointer-events-none"
+          )}
         >
-          Submit HITL Feedback & Update Learning Memory
+          {submitting ? (
+            <>
+              <Loader2 className="size-3.5 animate-spin" />
+              Recording Feedback…
+            </>
+          ) : submitted ? (
+            <>
+              <CheckCircle2 className="size-3.5" />
+              HITL Memory Updated
+            </>
+          ) : (
+            "Submit HITL Feedback & Update Learning Memory"
+          )}
         </button>
       </div>
 
-      <ScrollArea className="flex-1 rounded-xl border">
+      <div className="rounded-xl border shadow-2xs">
         <div className="divide-y">
           {tree.map((node) => {
             if (node.kind === "leaf") {
@@ -239,7 +266,7 @@ export function StructuredPanel({
             );
           })}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

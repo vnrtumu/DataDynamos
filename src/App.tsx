@@ -16,8 +16,8 @@ function Shell() {
   const [activeTab, setActiveTab] = useState<"workspace" | "deliverables">("workspace");
 
   return (
-    <div className="flex min-h-svh flex-col bg-background">
-      <header className="sticky top-0 z-10 border-b bg-background/80 backdrop-blur">
+    <div className="flex min-h-screen flex-col bg-background">
+      <header className="sticky top-0 z-20 border-b bg-background/80 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
           <div className="flex items-center gap-2.5">
             <div className="flex size-8 items-center justify-center rounded-lg bg-brand text-brand-foreground shadow-xs">

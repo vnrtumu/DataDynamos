@@ -81,9 +81,42 @@ def assemble_ub04(flats: list[FlatExtraction], ctx: GroundingCtx) -> UB04Fields:
     )
 
 
+def _examples() -> list:
+    import langextract as lx
+
+    return [
+        lx.data.ExampleData(
+            text=(
+                "UB-04 INSTITUTIONAL CLAIM\n"
+                "PATIENT: KARNO, YOLANA   PLAN ID: 990086221\n"
+                "BILL TYPE: 0111   TAX ID: 72-1216996\n"
+                "STATEMENT PERIOD: 2026-07-01 TO 2026-07-15\n"
+                "ATTENDING PHYSICIAN NPI: 1396827531\n"
+                "REV 0250 PHARMACY $450.00\n"
+                "TOTAL CHARGES: $1675.00"
+            ),
+            extractions=[
+                lx.data.Extraction(extraction_class="patient_name", extraction_text="KARNO, YOLANA"),
+                lx.data.Extraction(extraction_class="health_plan_id", extraction_text="990086221"),
+                lx.data.Extraction(extraction_class="type_of_bill", extraction_text="0111"),
+                lx.data.Extraction(extraction_class="federal_tax_id", extraction_text="72-1216996"),
+                lx.data.Extraction(extraction_class="statement_period_from", extraction_text="2026-07-01"),
+                lx.data.Extraction(extraction_class="statement_period_to", extraction_text="2026-07-15"),
+                lx.data.Extraction(extraction_class="attending_physician_npi", extraction_text="1396827531"),
+                lx.data.Extraction(
+                    extraction_class="revenue_code",
+                    extraction_text="REV 0250 PHARMACY $450.00",
+                    attributes={"code": "0250", "desc": "PHARMACY", "charge": "450.00"},
+                ),
+                lx.data.Extraction(extraction_class="total_charges", extraction_text="$1675.00"),
+            ],
+        )
+    ]
+
+
 SPEC = DocTypeSpec(
     prompt=PROMPT,
-    examples_factory=lambda: [],
+    examples_factory=_examples,
     extraction_classes=EXTRACTION_CLASSES,
     field_model=UB04Fields,
     assemble=assemble_ub04,
