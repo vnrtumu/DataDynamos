@@ -106,6 +106,8 @@ class QwenVLEngine(OCREngine):
             )
         except Exception as exc:  # noqa: BLE001 — surface as a clean 400, not a 500
             raise ValueError(f"Qwen-VL OCR request failed: {exc}") from exc
+        if not getattr(response, "choices", None):
+            raise ValueError(f"Qwen-VL returned no choices response: {response}")
         return response.choices[0].message.content or ""
 
     def _ocr_pages(self, doc_id: str, pages: list[Path]) -> tuple[list[OCRPage], list[str]]:
