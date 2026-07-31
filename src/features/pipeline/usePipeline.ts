@@ -25,6 +25,7 @@ import type {
   QualityReport,
   StructuredResult,
 } from "@/lib/types";
+import type { LlmModelOption } from "@/features/upload/LlmSelect";
 
 export type StageKey = "prescan" | "ocr" | "structure" | "decide";
 export type StageStatus = "idle" | "running" | "done" | "error" | "blocked";
@@ -53,6 +54,7 @@ export interface PipelineState {
   perStageStatus: Record<StageKey, StageStatus>;
   perStageTiming: Partial<Record<StageKey, number>>;
   activeEngine: OcrEngine;
+  activeLlmModel: LlmModelOption;
   docType: DocType;
   ingesting: boolean;
   error: { stage: StageKey; message: string } | null;
@@ -76,6 +78,9 @@ function initialState(): PipelineState {
     perStageStatus: idleStatus(),
     perStageTiming: {},
     activeEngine: "docling",
+    activeLlmModel:
+      (import.meta.env.VITE_DEFAULT_LLM_MODEL as LlmModelOption) ||
+      "deepseek-v4",
     docType: "invoice",
     ingesting: false,
     error: null,
@@ -86,6 +91,7 @@ type Action =
   | { type: "RESET" }
   | { type: "SET_DOC_TYPE"; docType: DocType }
   | { type: "SET_ACTIVE_ENGINE"; engine: OcrEngine }
+  | { type: "SET_ACTIVE_LLM_MODEL"; model: LlmModelOption }
   | { type: "INGEST_START" }
   | { type: "INGEST_DONE"; document: DocumentDetail }
   | { type: "INGEST_ERROR" }
@@ -120,6 +126,7 @@ function reducer(state: PipelineState, action: Action): PipelineState {
         ...initialState(),
         docType: state.docType,
         activeEngine: state.activeEngine,
+        activeLlmModel: state.activeLlmModel,
       };
     case "SET_DOC_TYPE":
       return { ...state, docType: action.docType };
@@ -134,11 +141,14 @@ function reducer(state: PipelineState, action: Action): PipelineState {
           : state.perStageTiming,
       };
     }
+    case "SET_ACTIVE_LLM_MODEL":
+      return { ...state, activeLlmModel: action.model };
     case "INGEST_START":
       return {
         ...initialState(),
         docType: state.docType,
         activeEngine: state.activeEngine,
+        activeLlmModel: state.activeLlmModel,
         ingesting: true,
       };
     case "INGEST_DONE":
@@ -241,6 +251,7 @@ function errMessage(e: unknown): string {
 export interface UsePipeline extends PipelineState {
   setDocType: (t: DocType) => void;
   setActiveEngine: (e: OcrEngine) => void;
+  setLlmModel: (m: LlmModelOption) => void;
   ingestFile: (file: File) => Promise<void>;
   openDocument: (id: string) => Promise<void>;
   runStage: (stage: StageKey) => Promise<void>;
@@ -260,7 +271,7 @@ export function usePipeline(): UsePipeline {
     async (
       docId: string,
       stage: StageKey,
-      opts: { engine: OcrEngine; docType: DocType; setActive?: boolean },
+      opts: { engine: OcrEngine; docType: DocType; llmModel?: LlmModelOption; setActive?: boolean },
     ): Promise<boolean> => {
       dispatch({ type: "STAGE_START", stage });
       try {
@@ -284,6 +295,7 @@ export function usePipeline(): UsePipeline {
           const result = await runStructure(docId, {
             docType: opts.docType,
             ocrEngine: opts.engine,
+            llmModel: opts.llmModel,
           });
           dispatch({
             type: "STRUCTURE_DONE",
@@ -307,12 +319,13 @@ export function usePipeline(): UsePipeline {
 
   // Sequential auto-run; downstream stages are marked blocked on first failure.
   const runAll = useCallback(
-    async (docId: string, engine: OcrEngine, docType: DocType) => {
+    async (docId: string, engine: OcrEngine, docType: DocType, llmModel: LlmModelOption) => {
       for (let i = 0; i < STAGE_ORDER.length; i++) {
         const stage = STAGE_ORDER[i];
         const ok = await execStage(docId, stage, {
           engine,
           docType,
+          llmModel,
           setActive: true,
         });
         if (!ok) {
@@ -329,6 +342,7 @@ export function usePipeline(): UsePipeline {
       dispatch({ type: "INGEST_START" });
       const engine = state.activeEngine;
       const docType = state.docType;
+      const llmModel = state.activeLlmModel;
       let doc: DocumentDetail;
       try {
         doc = await uploadDocument(file, docType);
@@ -338,9 +352,9 @@ export function usePipeline(): UsePipeline {
         return;
       }
       dispatch({ type: "INGEST_DONE", document: doc });
-      await runAll(doc.id, engine, docType);
+      await runAll(doc.id, engine, docType, llmModel);
     },
-    [state.activeEngine, state.docType, runAll],
+    [state.activeEngine, state.docType, state.activeLlmModel, runAll],
   );
 
   // Reopen an already-ingested document and rehydrate whatever stage results
@@ -401,10 +415,11 @@ export function usePipeline(): UsePipeline {
       await execStage(state.document.id, stage, {
         engine: state.activeEngine,
         docType: state.docType,
+        llmModel: state.activeLlmModel,
         setActive: true,
       });
     },
-    [state.document, state.activeEngine, state.docType, execStage],
+    [state.document, state.activeEngine, state.docType, state.activeLlmModel, execStage],
   );
 
   // Run OCR for both engines so the comparison view has qwen-vl + docling.
@@ -435,6 +450,10 @@ export function usePipeline(): UsePipeline {
     (e: OcrEngine) => dispatch({ type: "SET_ACTIVE_ENGINE", engine: e }),
     [],
   );
+  const setLlmModel = useCallback(
+    (m: LlmModelOption) => dispatch({ type: "SET_ACTIVE_LLM_MODEL", model: m }),
+    [],
+  );
   const reset = useCallback(() => dispatch({ type: "RESET" }), []);
 
   return useMemo(
@@ -442,6 +461,7 @@ export function usePipeline(): UsePipeline {
       ...state,
       setDocType,
       setActiveEngine,
+      setLlmModel,
       ingestFile,
       openDocument,
       runStage,
@@ -452,6 +472,7 @@ export function usePipeline(): UsePipeline {
       state,
       setDocType,
       setActiveEngine,
+      setLlmModel,
       ingestFile,
       openDocument,
       runStage,
