@@ -49,11 +49,28 @@ class OCREngine(ABC):
         storage.write_ocr_progress(doc.id, current_page=0, total_pages=doc.page_count, engine=self.name)
 
         start = perf_counter()
-        pages, warnings = self._ocr_pages(doc.id, page_paths, progress_cb=lambda pg: storage.write_ocr_progress(doc.id, current_page=pg, total_pages=doc.page_count, engine=self.name))
+        pages, warnings = self._ocr_pages(
+            doc.id,
+            page_paths,
+            progress_cb=lambda pg, p_list: storage.write_ocr_progress(
+                doc.id,
+                current_page=pg,
+                total_pages=doc.page_count,
+                engine=self.name,
+                pages=[p.model_dump(mode="json") for p in p_list] if p_list else None,
+            ),
+        )
         latency_ms = int((perf_counter() - start) * 1000)
 
         # Mark done
-        storage.write_ocr_progress(doc.id, current_page=doc.page_count, total_pages=doc.page_count, engine=self.name, done=True)
+        storage.write_ocr_progress(
+            doc.id,
+            current_page=doc.page_count,
+            total_pages=doc.page_count,
+            engine=self.name,
+            done=True,
+            pages=[p.model_dump(mode="json") for p in pages],
+        )
 
         all_confs: list[float] = []
         for page in pages:

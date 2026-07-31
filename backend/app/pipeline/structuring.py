@@ -64,7 +64,7 @@ def run_structuring(
         model = "mock"
     else:
         try:
-            flats, artifact = _structure_langextract(spec, full_text)
+            flats, artifact = _structure_langextract(spec, full_text, ocr_result.avg_confidence)
             model = settings.structuring_model
         except Exception as exc:
             flats = _structure_mock(doc_type, full_text)
@@ -129,13 +129,34 @@ def run_structuring(
 # --- providers ----------------------------------------------------------------
 
 
-def _structure_langextract(spec, full_text: str) -> tuple[list[FlatExtraction], str]:
+def _structure_langextract(spec, full_text: str, ocr_conf: float | None = None) -> tuple[list[FlatExtraction], str]:
     """Run LangExtract against OpenRouter and normalize to FlatExtraction[]."""
     if not settings.openrouter_api_key:
         raise ValueError("OPENROUTER_API_KEY is not set; the langextract provider needs it.")
 
+    import json
+    from pathlib import Path
     import langextract as lx  # lazy: optional dep
     from langextract.factory import ModelConfig
+
+    # Self-Learning HITL Feedback Loop: Read operator corrections and append as learned rules
+    prompt = spec.prompt
+    memory_path = Path("data/feedback_memory.json")
+    if memory_path.exists():
+        try:
+            entries = json.loads(memory_path.read_text(encoding="utf-8"))
+            if entries:
+                prompt += "\n\n### Operator Learning Memory (Active Stage 7 HITL Corrections):\n"
+                for entry in entries[-5:]:  # inject latest 5 corrections
+                    notes = entry.get("notes", "")
+                    corrections = entry.get("corrections", {})
+                    if corrections:
+                        prompt += f"- Guidance: {notes} -> Enforce field values: {json.dumps(corrections)}\n"
+        except Exception:
+            pass
+
+    # Adaptive Extraction Passes: 1 pass for high-confidence clean scans (>0.85 conf = 2x speed & half cost), 2 passes for lower confidence
+    passes = 1 if (ocr_conf is not None and ocr_conf >= 0.85) else settings.structuring_extraction_passes
 
     config = ModelConfig(
         model_id=settings.structuring_model,
@@ -147,11 +168,11 @@ def _structure_langextract(spec, full_text: str) -> tuple[list[FlatExtraction], 
     )
     annotated = lx.extract(
         text_or_documents=full_text,
-        prompt_description=spec.prompt,
+        prompt_description=prompt,
         examples=spec.examples_factory(),
         config=config,
         max_char_buffer=settings.structuring_max_char_buffer,
-        extraction_passes=settings.structuring_extraction_passes,
+        extraction_passes=passes,
     )
 
     flats: list[FlatExtraction] = []

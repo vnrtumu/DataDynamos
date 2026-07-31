@@ -25,7 +25,7 @@ interface OcrProgress {
 }
 
 export function Workspace() {
-  const { document, prescan, perStageStatus, reset } = usePipelineContext();
+  const { document, prescan, perStageStatus, reset, setPartialOcr, activeEngine } = usePipelineContext();
   const [showPrescan, setShowPrescan] = useState(false);
   const [ocrProgress, setOcrProgress] = useState<OcrProgress | null>(null);
 
@@ -36,7 +36,7 @@ export function Workspace() {
     ([, s]) => s === "running"
   )?.[0] ?? null;
 
-  // Poll OCR progress endpoint while OCR stage is running
+  // Poll OCR progress endpoint while OCR stage is running and stream pages live
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     if (activeStage !== "ocr" || !document) {
@@ -48,8 +48,23 @@ export function Workspace() {
       try {
         const res = await fetch(`${API_BASE_URL}/documents/${document.id}/ocr/progress`);
         if (!cancelled && res.ok) {
-          const data: OcrProgress = await res.json();
+          const data: OcrProgress & { pages?: any[] } = await res.json();
           setOcrProgress(data);
+          if (data.pages && data.pages.length > 0) {
+            setPartialOcr({
+              document_id: document.id,
+              status: "ocr_done",
+              engine_name: data.engine || activeEngine,
+              engine_version: "1.0",
+              device: "cpu",
+              full_text: data.pages.map((p) => p.text).join("\n\n"),
+              pages: data.pages,
+              avg_confidence: 0.95,
+              table_count: data.pages.reduce((acc, p) => acc + (p.tables?.length || 0), 0),
+              latency_ms: 0,
+              warnings: [],
+            });
+          }
         }
       } catch { /* ignore */ }
     };
@@ -59,7 +74,7 @@ export function Workspace() {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [activeStage, document?.id]);
+  }, [activeStage, document?.id, activeEngine, setPartialOcr]);
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-5 px-4 py-5 sm:px-6">

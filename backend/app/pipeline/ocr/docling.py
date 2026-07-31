@@ -44,10 +44,11 @@ def _converter():
     global _CONVERTER
     if _CONVERTER is None:
         from docling.datamodel.base_models import InputFormat  # lazy: heavy import
-        from docling.datamodel.pipeline_options import AcceleratorOptions, PdfPipelineOptions
+        from docling.datamodel.pipeline_options import AcceleratorOptions, PdfPipelineOptions, TableFormerMode
         from docling.document_converter import DocumentConverter, PdfFormatOption
 
         opts = PdfPipelineOptions(do_ocr=True, do_table_structure=True)
+        opts.table_structure_options.mode = TableFormerMode.ACCURATE
         opts.accelerator_options = AcceleratorOptions(
             device=_accelerator_device(settings.ocr_device)
         )
@@ -127,9 +128,9 @@ class DoclingEngine(OCREngine):
                     markdown_url=markdown_url,
                 )
             )
-            # Report this page as done
+            # Report this page as done with partial pages
             if progress_cb:
-                progress_cb(page_no)
+                progress_cb(page_no, out)
 
         warnings.append("docling does not expose per-block OCR confidence")
         return out, warnings

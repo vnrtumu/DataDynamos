@@ -282,24 +282,25 @@ def write_ocr_progress(
     total_pages: int,
     engine: str = "",
     done: bool = False,
+    pages: list[dict] | None = None,
 ) -> None:
-    """Write per-page OCR scanning progress to a JSON file.
+    """Write per-page OCR scanning progress + completed page OCR data to a JSON file.
 
-    Clients can poll GET /documents/{id}/ocr/progress to read it.
+    Clients can poll GET /documents/{id}/ocr/progress to read it and display pages live.
     Silently ignores errors so a progress write never aborts OCR.
     """
     try:
         path = _progress_path(doc_id)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            _json.dumps({
-                "current_page": current_page,
-                "total_pages": total_pages,
-                "engine": engine,
-                "done": done,
-            }),
-            encoding="utf-8",
-        )
+        payload = {
+            "current_page": current_page,
+            "total_pages": total_pages,
+            "engine": engine,
+            "done": done,
+        }
+        if pages is not None:
+            payload["pages"] = pages
+        path.write_text(_json.dumps(payload), encoding="utf-8")
     except Exception:
         pass
 

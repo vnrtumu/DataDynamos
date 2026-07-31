@@ -88,6 +88,6 @@ class PyTesseractEngine(OCREngine):
                 )
             )
             if progress_cb:
-                progress_cb(idx)
+                progress_cb(idx, ocr_pages)
 
         return ocr_pages, warnings

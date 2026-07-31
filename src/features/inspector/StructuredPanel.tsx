@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CornerDownRight, CheckCircle2, Loader2 } from "lucide-react";
+import { CornerDownRight, CheckCircle2, Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -58,42 +58,36 @@ function Leaf({
   const groundable =
     leaf.fv.grounding?.alignment &&
     leaf.fv.grounding.alignment !== "ungrounded";
+
   return (
     <div
       onMouseEnter={() => onHover(leaf.path)}
       onMouseLeave={() => onHover(null)}
       className={cn(
-        "flex items-center justify-between gap-3 rounded-lg px-3 py-2 transition-colors",
-        groundable
-          ? "cursor-pointer hover:bg-brand/[0.06]"
-          : "hover:bg-muted/50",
-        indent && "ml-4",
+        "group flex items-center justify-between gap-2 rounded-md px-2 py-1 text-xs transition-colors",
+        groundable ? "cursor-pointer hover:bg-brand/5" : "hover:bg-muted/40",
       )}
     >
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 items-center gap-1.5">
         {indent && (
-          <CornerDownRight className="size-3 shrink-0 text-muted-foreground/50" />
+          <CornerDownRight className="size-3 text-muted-foreground/40 shrink-0" />
         )}
-        <span className="text-sm text-muted-foreground">{leaf.label}</span>
-      </div>
-      <div className="flex items-center gap-2">
         <span
           className={cn(
-            "truncate text-right font-mono text-sm",
-            leaf.fv.value === null
-              ? "text-muted-foreground/60 italic"
-              : "text-foreground",
+            "size-1.5 rounded-full shrink-0",
+            dot.cls,
           )}
-        >
-          {displayValue(leaf.fv.value)}
-        </span>
-        {leaf.fv.value !== null && (
-          <ConfidencePill value={leaf.fv.confidence} />
-        )}
-        <span
-          className={cn("size-2 shrink-0 rounded-full", dot.cls)}
           title={dot.title}
         />
+        <span className="font-mono text-[11px] text-muted-foreground truncate">
+          {leaf.label}
+        </span>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="font-medium text-foreground">
+          {displayValue(leaf.fv.value)}
+        </span>
+        <ConfidencePill value={leaf.fv.confidence} />
       </div>
     </div>
   );
@@ -109,6 +103,19 @@ export function StructuredPanel({
   const tree = buildFieldTree(result.fields);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  const handleExportJson = () => {
+    const dataStr =
+      "data:text/json;charset=utf-8," +
+      encodeURIComponent(JSON.stringify(result.fields, null, 2));
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `extracted_claim_${result.document_id}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    toast.success("Structured fields exported as JSON!");
+  };
 
   const handleSubmitFeedback = async () => {
     setSubmitting(true);
@@ -149,6 +156,15 @@ export function StructuredPanel({
           <Badge variant="outline">
             {formatPct(result.extraction_confidence)} confidence
           </Badge>
+          <button
+            type="button"
+            onClick={handleExportJson}
+            className="flex items-center gap-1.5 rounded-md border bg-card px-2.5 py-1 text-[11px] font-semibold text-foreground hover:bg-muted transition-colors cursor-pointer shadow-2xs"
+            title="Download extracted fields as JSON"
+          >
+            <Download className="size-3.5 text-sky-400" />
+            Export JSON
+          </button>
         </div>
       </div>
 

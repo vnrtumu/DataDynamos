@@ -184,6 +184,11 @@ function reducer(state: PipelineState, action: Action): PipelineState {
           ? { ...state.perStageTiming, ocr: action.result.latency_ms }
           : state.perStageTiming,
       };
+    case "PARTIAL_OCR":
+      return {
+        ...state,
+        ocr: action.result,
+      };
     case "STRUCTURE_DONE":
       return {
         ...state,
@@ -246,6 +251,7 @@ function errMessage(e: unknown): string {
 export interface UsePipeline extends PipelineState {
   setDocType: (t: DocType) => void;
   setActiveEngine: (e: OcrEngine) => void;
+  setPartialOcr: (result: OCRResult) => void;
   ingestFile: (file: File) => Promise<void>;
   openDocument: (id: string) => Promise<void>;
   runStage: (stage: StageKey) => Promise<void>;
@@ -441,6 +447,10 @@ export function usePipeline(): UsePipeline {
     (e: OcrEngine) => dispatch({ type: "SET_ACTIVE_ENGINE", engine: e }),
     [],
   );
+  const setPartialOcr = useCallback(
+    (result: OCRResult) => dispatch({ type: "PARTIAL_OCR", result }),
+    [],
+  );
   const reset = useCallback(() => dispatch({ type: "RESET" }), []);
 
   return useMemo(
@@ -448,6 +458,7 @@ export function usePipeline(): UsePipeline {
       ...state,
       setDocType,
       setActiveEngine,
+      setPartialOcr,
       ingestFile,
       openDocument,
       runStage,
@@ -458,6 +469,7 @@ export function usePipeline(): UsePipeline {
       state,
       setDocType,
       setActiveEngine,
+      setPartialOcr,
       ingestFile,
       openDocument,
       runStage,

@@ -51,5 +51,5 @@ class MockEngine(OCREngine):
             text = "\n".join(b.text for b in blocks)
             out.append(OCRPage(page=page_no, text=text, blocks=blocks, tables=tables))
             if progress_cb:
-                progress_cb(page_no)
+                progress_cb(page_no, out)
         return out, []

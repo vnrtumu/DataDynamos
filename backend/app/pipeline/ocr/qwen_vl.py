@@ -133,7 +133,7 @@ class QwenVLEngine(OCREngine):
                 )
             )
             if progress_cb:
-                progress_cb(page_no)
+                progress_cb(page_no, out)
         return out, ["qwen-vl does not expose bounding boxes or per-block confidence"]
 
     def warm(self) -> None:
