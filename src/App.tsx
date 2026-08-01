@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ShieldCheck, Layers, FileSpreadsheet, Sliders } from "lucide-react";
+import { ShieldCheck, Layers, FileSpreadsheet, Sliders, BarChart3 } from "lucide-react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
@@ -11,10 +11,11 @@ import { UploadView } from "@/features/upload/UploadView";
 import { Workspace } from "@/features/Workspace";
 import { DeliverablesView } from "@/features/deliverables/DeliverablesView";
 import { RuleSettingsView } from "@/features/rules/RuleSettingsView";
+import { ReportsView } from "@/features/reports/ReportsView";
 
 function Shell() {
   const { document } = usePipelineContext();
-  const [activeTab, setActiveTab] = useState<"workspace" | "rules" | "deliverables">("workspace");
+  const [activeTab, setActiveTab] = useState<"workspace" | "rules" | "architecture" | "reports">("workspace");
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -60,12 +61,23 @@ function Shell() {
               <Layers className="size-3.5 text-sky-400" />
               Architecture
             </Button>
+            <Button
+              variant={activeTab === "reports" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setActiveTab("reports")}
+              className="text-xs gap-1.5"
+            >
+              <BarChart3 className="size-3.5 text-emerald-400" />
+              Reports & Benchmarks
+            </Button>
           </div>
         </div>
       </header>
 
       <main className="flex flex-1 flex-col">
-        {activeTab === "architecture" ? (
+        {activeTab === "reports" ? (
+          <ReportsView />
+        ) : activeTab === "architecture" ? (
           <DeliverablesView />
         ) : activeTab === "rules" ? (
           <RuleSettingsView />
