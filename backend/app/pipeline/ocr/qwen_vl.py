@@ -110,7 +110,7 @@ class QwenVLEngine(OCREngine):
             raise ValueError(f"Qwen-VL returned no choices response: {response}")
         return response.choices[0].message.content or ""
 
-    def _ocr_pages(self, doc_id: str, pages: list[Path]) -> tuple[list[OCRPage], list[str]]:
+    def _ocr_pages(self, doc_id: str, pages: list[Path], progress_cb=None) -> tuple[list[OCRPage], list[str]]:
         client = self._client()
         out: list[OCRPage] = []
         for page_no, path in enumerate(pages, start=1):
@@ -134,6 +134,8 @@ class QwenVLEngine(OCREngine):
                     markdown_url=markdown_url,
                 )
             )
+            if progress_cb:
+                progress_cb(page_no, out)
         return out, ["qwen-vl does not expose bounding boxes or per-block confidence"]
 
     def warm(self) -> None:

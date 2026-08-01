@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Sliders,
   ShieldCheck,
@@ -15,6 +15,8 @@ import {
   DollarSign,
   ShieldAlert,
   Info,
+  BookOpen,
+  Search,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,6 +39,267 @@ interface RulePreset {
   bankDetailFlag: boolean;
   duplicateCheck: boolean;
 }
+
+interface RuleGlossaryItem {
+  name: string;
+  code: string;
+  category: "healthcare" | "invoices" | "contracts" | "preflight";
+  severity: "hard" | "review" | "advisory";
+  summary: string;
+  explanation: string;
+}
+
+const RULE_GLOSSARY: RuleGlossaryItem[] = [
+  // Healthcare - CMS-1500
+  {
+    name: "Patient Identity Match",
+    code: "patient_identity_match [ANSI A1]",
+    category: "healthcare",
+    severity: "hard",
+    summary: "Cross-references Box 2 Patient Name & Box 3 Date of Birth against active payer patient registry.",
+    explanation: "Ensures the patient listed on the claim is an active covered beneficiary under the policy. Mismatches prevent paying claims under fraudulent or misspelled patient profiles.",
+  },
+  {
+    name: "Insured ID Active",
+    code: "insured_id_active [ANSI A2]",
+    category: "healthcare",
+    severity: "hard",
+    summary: "Validates Box 1a Insured's Policy ID format and active coverage on date of service.",
+    explanation: "Checks that the primary insurance policy number is active on the specific date medical services were provided. Fails if policy is lapsed, cancelled, or invalid.",
+  },
+  {
+    name: "Insurance Type Selection Match",
+    code: "insurance_type_match [ANSI A3]",
+    category: "healthcare",
+    severity: "review",
+    summary: "Confirms Box 1 coverage type selection (Medicare, Medicaid, TRICARE, Commercial) aligns with policy.",
+    explanation: "Audits whether the primary payer designated on the claim matches the patient's enrolled plan type.",
+  },
+  {
+    name: "Billing Provider NPI Checksum",
+    code: "billing_npi_nppes_active [ANSI B1]",
+    category: "healthcare",
+    severity: "hard",
+    summary: "Validates Box 33a Billing Provider 10-digit NPI using Luhn check digit algorithm (80840 US prefix).",
+    explanation: "Ensures the billing organization or physician possesses an active, legitimate NPI registered in the National Plan & Provider Enumeration System (NPPES).",
+  },
+  {
+    name: "Rendering Provider NPI Checksum",
+    code: "rendering_npi_nppes_active [ANSI B2]",
+    category: "healthcare",
+    severity: "hard",
+    summary: "Validates Box 24J Rendering Physician 10-digit NPI via Luhn check digit algorithm.",
+    explanation: "Verifies that the individual practitioner who rendered the medical treatment has a valid, unrevoked NPI license.",
+  },
+  {
+    name: "Tax ID & NPI Entity Match",
+    code: "tax_id_npi_match [ANSI B3]",
+    category: "healthcare",
+    severity: "review",
+    summary: "Cross-references Box 25 Provider Federal Tax ID / EIN with the billing NPI organizational entity.",
+    explanation: "Audits whether the tax identification number provided matches IRS records for the billing provider's registered business entity.",
+  },
+  {
+    name: "Provider Billing Address Match",
+    code: "provider_address_match [ANSI B4]",
+    category: "healthcare",
+    severity: "review",
+    summary: "Confirms Box 33 Billing Provider Address matches contracted practice location records.",
+    explanation: "Protects against billing fraud by verifying that payments are remitted to an authorized, contracted clinic or hospital address.",
+  },
+  {
+    name: "ICD-10 Diagnosis Code Audit",
+    code: "icd10_valid [ANSI C1]",
+    category: "healthcare",
+    severity: "hard",
+    summary: "Audits Box 21 diagnosis codes against standard ICD-10-CM formatting rules (e.g. E11.9, G31.84).",
+    explanation: "Verifies that all listed medical condition codes conform to valid ICD-10 clinical diagnosis standards.",
+  },
+  {
+    name: "CPT/HCPCS Procedure Code Audit",
+    code: "cpt_hcpcs_valid [ANSI C2]",
+    category: "healthcare",
+    severity: "review",
+    summary: "Validates Box 24D 5-character CPT/HCPCS procedure codes format.",
+    explanation: "Confirms medical procedures, treatments, or surgeries billed on service lines represent valid 5-digit CPT/HCPCS medical codes.",
+  },
+  {
+    name: "Diagnosis Pointer Linkage",
+    code: "diagnosis_pointer_valid [ANSI C3]",
+    category: "healthcare",
+    severity: "review",
+    summary: "Verifies Box 24E diagnosis pointers correctly link line-item CPT procedure codes back to Box 21 diagnosis codes A–L.",
+    explanation: "Audits medical necessity by proving that each billed procedure is explicitly justified by a corresponding diagnosed medical condition.",
+  },
+  {
+    name: "Place of Service (POS) Alignment",
+    code: "place_of_service_valid [ANSI C4]",
+    category: "healthcare",
+    severity: "review",
+    summary: "Confirms Box 24B Place of Service code (e.g. 11 Office, 21 Hospital) matches procedure guidelines.",
+    explanation: "Ensures the setting where treatment was provided (e.g. outpatient clinic vs inpatient hospital) is appropriate for the billed procedure code.",
+  },
+  {
+    name: "CMS-1500 Total Charge Balance Math",
+    code: "charge_balance [ANSI D2]",
+    category: "healthcare",
+    severity: "hard",
+    summary: "Calculates sum of (Box 24F Line Charges x Units) and verifies it equals Box 28 Total Charge.",
+    explanation: "Fails if the sum of individual line item charges does not equal the claimed Total Charge on the CMS-1500 form.",
+  },
+  {
+    name: "CMS-1500 Balance Due Math",
+    code: "balance_due_math [ANSI D3]",
+    category: "healthcare",
+    severity: "hard",
+    summary: "Verifies Box 30 Balance Due equals Box 28 Total Charge minus Box 29 Amount Paid.",
+    explanation: "Checks financial arithmetic to ensure patient co-pays or prior payments are correctly deducted from the remaining balance due.",
+  },
+  {
+    name: "Signature on File (SOF) Release",
+    code: "signature_on_file [ANSI E1]",
+    category: "healthcare",
+    severity: "review",
+    summary: "Verifies Box 12 & 13 Signature on File (SOF) assignment of benefits release indicators are on record.",
+    explanation: "Confirms the patient has signed a legal release authorizing medical records disclosure and direct payment to the provider.",
+  },
+  {
+    name: "Prior Authorization Approval",
+    code: "prior_authorization_valid [ANSI E2]",
+    category: "healthcare",
+    severity: "review",
+    summary: "Confirms Box 23 Prior Authorization pre-approval number is active and approved.",
+    explanation: "Verifies high-cost specialized treatments or surgeries received pre-service insurance approval prior to billing.",
+  },
+
+  // Healthcare - UB-04
+  {
+    name: "Revenue Charges Balance Audit",
+    code: "revenue_charges_balance",
+    category: "healthcare",
+    severity: "hard",
+    summary: "Calculates sum of itemized revenue line charges (Boxes 42–47) and verifies equality to Box 47 line 23 Total Charges.",
+    explanation: "A critical institutional financial check. Ensures the sum of itemized hospital room, pharmacy, and supply charges equals the total claimed charges on UB-04 forms.",
+  },
+  {
+    name: "Attending Physician NPI Checksum",
+    code: "attending_npi_checksum",
+    category: "healthcare",
+    severity: "hard",
+    summary: "Runs 10-digit Luhn checksum validation on Box 76 Attending Physician NPI.",
+    explanation: "Ensures the supervising hospital physician responsible for patient care has a valid, active NPI.",
+  },
+  {
+    name: "Federal Tax ID 9-Digit Format",
+    code: "federal_tax_id_format",
+    category: "healthcare",
+    severity: "review",
+    summary: "Audits Box 5 Federal Tax ID for standard 9-digit EIN formatting.",
+    explanation: "Verifies hospital or facility tax identification format for IRS 1099 compliance.",
+  },
+  {
+    name: "Institutional Patient & Health Plan ID",
+    code: "institutional_patient_id",
+    category: "healthcare",
+    severity: "hard",
+    summary: "Verifies both Patient Name (Box 8) and Health Plan ID (Box 60) are present on institutional claim forms.",
+    explanation: "Fails if hospital claim forms are submitted missing primary patient identity or health plan membership details.",
+  },
+
+  // Invoices
+  {
+    name: "Invoice Subtotal + Tax Math Balance",
+    code: "total_math",
+    category: "invoices",
+    severity: "hard",
+    summary: "Verifies Subtotal + Tax = Total Charges (within +/- $0.01 tolerance).",
+    explanation: "Audits commercial invoice line arithmetic. Prevents paying vendor invoices with calculation errors or hidden fees.",
+  },
+  {
+    name: "Duplicate Invoice Number Safeguard",
+    code: "duplicate_invoice_no",
+    category: "invoices",
+    severity: "hard",
+    summary: "Queries historical database to block processing if the invoice number was already paid or processed.",
+    explanation: "A key accounts payable control that blocks double payments by detecting duplicate invoice numbers across previously processed vendors.",
+  },
+  {
+    name: "Invoice Auto-Approve Threshold Cap",
+    code: "auto_approve_threshold",
+    category: "invoices",
+    severity: "review",
+    summary: "Routes commercial invoices with total charges exceeding dollar cap (e.g. $10,000) to HITL manual review.",
+    explanation: "Enforces financial delegation of authority rules by requiring manager sign-off for large enterprise purchases.",
+  },
+  {
+    name: "Purchase Order (PO) Presence",
+    code: "po_present",
+    category: "invoices",
+    severity: "advisory",
+    summary: "Checks if a Purchase Order (PO) reference number is present on the invoice.",
+    explanation: "Flags non-PO invoices to ensure accounts payable teams can match billing to approved procurement requisitions.",
+  },
+
+  // Contracts
+  {
+    name: "Mandatory Signature Execution Audit",
+    code: "signatures_present",
+    category: "contracts",
+    severity: "hard",
+    summary: "Fails if executed signatures for both contracting parties are missing from the document.",
+    explanation: "Ensures legal contracts are fully executed and legally binding before archiving or activating terms.",
+  },
+  {
+    name: "Auto-Renewal Without Notice Risk",
+    code: "auto_renew_without_notice",
+    category: "contracts",
+    severity: "hard",
+    summary: "Flags contracts that auto-renew automatically without specifying a required cancellation notice window.",
+    explanation: "Protects against surprise recurring financial commitments by identifying evergreen clauses lacking cancellation notice windows.",
+  },
+  {
+    name: "Standard Termination Clause Presence",
+    code: "termination_clause_present",
+    category: "contracts",
+    severity: "review",
+    summary: "Verifies the presence of a standard termination/exit clause in the contract text.",
+    explanation: "Ensures the organization retains legal rights to terminate agreements for cause or convenience.",
+  },
+  {
+    name: "Limitation of Liability Cap Audit",
+    code: "liability_cap_present",
+    category: "contracts",
+    severity: "review",
+    summary: "Checks for the presence of a Limitation of Liability clause to limit financial exposure.",
+    explanation: "Identifies contracts with uncapped financial liability exposure so legal counsel can negotiate liability caps.",
+  },
+  {
+    name: "Approved Governing Law Jurisdiction",
+    code: "governing_law_allowed",
+    category: "contracts",
+    severity: "review",
+    summary: "Confirms governing jurisdiction matches approved list (Delaware, New York, California, England & Wales).",
+    explanation: "Prevents entering contracts governed by unfamiliar or unfavorable legal jurisdictions.",
+  },
+
+  // Pre-flight Quality
+  {
+    name: "AI Extraction Confidence Warning",
+    code: "extraction_confidence",
+    category: "preflight",
+    severity: "review",
+    summary: "Triggers manual review if overall AI field extraction confidence falls below warning floor (e.g. 60%).",
+    explanation: "Acts as a safety net against noisy OCR by flagging low-confidence extractions before business rules run.",
+  },
+  {
+    name: "Pre-flight Scan Quality Verdict",
+    code: "prescan_quality",
+    category: "preflight",
+    severity: "review",
+    summary: "Ensures scanned document passes minimum DPI, blur, deskew, and contrast quality checks.",
+    explanation: "Prevents processing severely blurred or illegible scans that would lead to inaccurate data extraction.",
+  },
+];
 
 const PRESETS: RulePreset[] = [
   {
@@ -93,6 +356,23 @@ export function RuleSettingsView() {
   const [activeCategory, setActiveCategory] = useState<
     "all" | "healthcare" | "invoices" | "contracts" | "preflight"
   >("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // Filter glossary items based on category and search query
+  const filteredGlossary = useMemo(() => {
+    return RULE_GLOSSARY.filter((item) => {
+      const matchCategory =
+        activeCategory === "all" || item.category === activeCategory;
+      const q = searchQuery.toLowerCase().trim();
+      const matchSearch =
+        !q ||
+        item.name.toLowerCase().includes(q) ||
+        item.code.toLowerCase().includes(q) ||
+        item.summary.toLowerCase().includes(q) ||
+        item.explanation.toLowerCase().includes(q);
+      return matchCategory && matchSearch;
+    });
+  }, [activeCategory, searchQuery]);
 
   // Rule State Values
   const [cms1500Max, setCms1500Max] = useState<number>(5000);
@@ -626,6 +906,79 @@ export function RuleSettingsView() {
           </Card>
         )}
       </div>
+
+      {/* Rule Audit Meanings & Specifications Dictionary */}
+      <Card className="border-border/80 shadow-sm mt-4">
+        <CardHeader className="pb-3 border-b bg-muted/30">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
+                <BookOpen className="size-4 text-purple-400" />
+                Automated Financial & Compliance Audit Rule Meanings Glossary
+              </CardTitle>
+              <CardDescription className="text-xs mt-0.5">
+                Complete technical specification, severity levels, and business meanings for all automated audit checks in the system.
+              </CardDescription>
+            </div>
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search rule names, codes, or terms..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-lg border bg-background pl-8 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-purple-500"
+              />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-6">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredGlossary.map((item) => (
+              <div
+                key={item.code}
+                className="flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4 transition-all hover:border-purple-500/40 hover:shadow-2xs"
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <span className="font-semibold text-xs text-foreground leading-snug">
+                      {item.name}
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] shrink-0 font-mono ${
+                        item.severity === "hard"
+                          ? "border-rose-500/40 bg-rose-500/10 text-rose-400"
+                          : item.severity === "review"
+                          ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
+                          : "border-sky-500/40 bg-sky-500/10 text-sky-300"
+                      }`}
+                    >
+                      {item.severity.toUpperCase()} FAIL
+                    </Badge>
+                  </div>
+                  <div className="font-mono text-[10px] text-purple-300 bg-purple-500/10 rounded px-1.5 py-0.5 w-fit mb-2">
+                    {item.code}
+                  </div>
+                  <p className="text-[11px] text-foreground/90 font-medium leading-relaxed mb-2">
+                    {item.summary}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed border-t border-dashed pt-2">
+                    <span className="font-semibold text-foreground/80">Business Meaning: </span>
+                    {item.explanation}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {filteredGlossary.length === 0 && (
+            <div className="py-8 text-center text-xs text-muted-foreground">
+              No audit rules found matching "{searchQuery}".
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Footer Info Box */}
       <div className="rounded-xl border border-border/70 bg-card p-4 flex items-start gap-3 text-xs text-muted-foreground shadow-xs">

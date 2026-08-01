@@ -32,6 +32,15 @@ ALLOWED_TYPES: dict[str, str] = {
     ".jpeg": "image/jpeg",
     ".tif": "image/tiff",
     ".tiff": "image/tiff",
+    ".bmp": "image/bmp",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+    ".jfif": "image/jpeg",
+    ".pnm": "image/x-portable-pixmap",
+    ".ppm": "image/x-portable-pixmap",
+    ".pgm": "image/x-portable-pixmap",
+    ".pbm": "image/x-portable-pixmap",
+    ".txt": "text/plain",
 }
 
 
@@ -43,13 +52,35 @@ def _doc_dir(doc_id: str) -> Path:
     return settings.data_path / doc_id
 
 
-def detect_type(filename: str) -> tuple[str, str]:
-    """Return (lowercased extension, MIME) for an accepted file, else raise."""
+def detect_type(filename: str, content: bytes | None = None) -> tuple[str, str]:
+    """Return (lowercased extension, MIME) for an accepted file using extension or magic bytes."""
     ext = Path(filename).suffix.lower()
     mime = ALLOWED_TYPES.get(ext)
-    if mime is None:
-        raise UnsupportedFileType(ext or filename)
-    return ext, mime
+    if mime is not None:
+        return ext, mime
+
+    if content:
+        if content.startswith(b"%PDF"):
+            return ".pdf", "application/pdf"
+        try:
+            from io import BytesIO
+            with Image.open(BytesIO(content)) as img:
+                fmt = (img.format or "png").lower()
+                ext_map = {
+                    "jpeg": ".jpg",
+                    "png": ".png",
+                    "tiff": ".tif",
+                    "bmp": ".bmp",
+                    "webp": ".webp",
+                    "gif": ".gif",
+                }
+                detected_ext = ext_map.get(fmt, f".{fmt}")
+                detected_mime = ALLOWED_TYPES.get(detected_ext, "image/png")
+                return detected_ext, detected_mime
+        except Exception:
+            pass
+
+    raise UnsupportedFileType(ext or filename)
 
 
 def delete_document_dir(doc_id: str) -> None:
@@ -102,7 +133,24 @@ def normalize_to_pages(doc_id: str, original: Path, mime: str) -> int:
     """Render the original into per-page PNGs (+ thumbnails). Returns page count."""
     if mime == "application/pdf":
         return _normalize_pdf(doc_id, original)
+    if mime == "text/plain":
+        return _normalize_text(doc_id, original)
     return _normalize_image(doc_id, original)
+
+
+def _normalize_text(doc_id: str, original: Path) -> int:
+    """Render plain text file as a page image."""
+    from PIL import ImageDraw, ImageFont
+    text = original.read_text(encoding="utf-8", errors="ignore")
+    img = Image.new("RGB", (1200, 1600), color=(255, 255, 255))
+    draw = ImageDraw.Draw(img)
+    font = ImageFont.load_default()
+    y = 40
+    for line in text.splitlines()[:60]:
+        draw.text((40, y), line, fill=(0, 0, 0), font=font)
+        y += 24
+    _save_page(doc_id, 1, img)
+    return 1
 
 
 def _normalize_pdf(doc_id: str, original: Path) -> int:
@@ -217,3 +265,52 @@ def save_structure_artifact(doc_id: str, content: str, name: str = "extractions.
 def structure_artifact_url(doc_id: str, name: str = "extractions.jsonl") -> str:
     """Relative URL (served via /files) for the saved structuring artifact."""
     return f"/files/{doc_id}/structure/{name}"
+
+
+# --- OCR progress tracking (per-page live status) ----------------------------
+
+import json as _json
+
+
+def _progress_path(doc_id: str) -> Path:
+    return _doc_dir(doc_id) / "ocr_progress.json"
+
+
+def write_ocr_progress(
+    doc_id: str,
+    current_page: int,
+    total_pages: int,
+    engine: str = "",
+    done: bool = False,
+    pages: list[dict] | None = None,
+) -> None:
+    """Write per-page OCR scanning progress + completed page OCR data to a JSON file.
+
+    Clients can poll GET /documents/{id}/ocr/progress to read it and display pages live.
+    Silently ignores errors so a progress write never aborts OCR.
+    """
+    try:
+        path = _progress_path(doc_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {
+            "current_page": current_page,
+            "total_pages": total_pages,
+            "engine": engine,
+            "done": done,
+        }
+        if pages is not None:
+            payload["pages"] = pages
+        path.write_text(_json.dumps(payload), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def read_ocr_progress(doc_id: str) -> dict:
+    """Read the last written OCR progress for a document. Returns empty dict if not available."""
+    try:
+        path = _progress_path(doc_id)
+        if path.exists():
+            return _json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return {}

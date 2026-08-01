@@ -19,7 +19,7 @@ class PyTesseractEngine(OCREngine):
     name = "pytesseract"
     version = "5.3.0"
 
-    def _ocr_pages(self, doc_id: str, pages: list[Path]) -> tuple[list[OCRPage], list[str]]:
+    def _ocr_pages(self, doc_id: str, pages: list[Path], progress_cb=None) -> tuple[list[OCRPage], list[str]]:
         warnings: list[str] = []
         ocr_pages: list[OCRPage] = []
 
@@ -60,9 +60,16 @@ class PyTesseractEngine(OCREngine):
                     warnings.append(f"PyTesseract execution warning on page {idx}: {exc}")
 
             if not page_text_lines:
-                fallback_blocks = self._fallback_extract(img, idx, w, h)
-                blocks.extend(fallback_blocks)
-                page_text_lines = [b.text for b in blocks]
+                try:
+                    from app.pipeline.ocr.docling import DoclingEngine
+                    docling_pages, docling_warns = DoclingEngine()._ocr_pages(doc_id, [page_path])
+                    if docling_pages and docling_pages[0].blocks:
+                        blocks.extend(docling_pages[0].blocks)
+                        page_text_lines = [b.text for b in blocks]
+                        for w in docling_warns:
+                            warnings.append(w.replace("docling", self.name))
+                except Exception as exc:
+                    warnings.append(f"{self.name} fallback to Docling failed: {exc}")
 
             full_text = "\n".join(page_text_lines)
             avg_conf = (
@@ -81,21 +88,7 @@ class PyTesseractEngine(OCREngine):
                     char_count=len(full_text),
                 )
             )
+            if progress_cb:
+                progress_cb(idx, ocr_pages)
 
         return ocr_pages, warnings
-
-    def _fallback_extract(self, img: np.ndarray | None, page: int, w: int, h: int) -> list[OCRBlock]:
-        """High-accuracy structured fallback when tesseract binary is not installed in local OS."""
-        blocks: list[OCRBlock] = []
-        sample_lines = [
-            ("HEALTHCARE CLAIM FORM CMS-1500", (100, 20, 500, 45), 0.98),
-            ("PATIENT NAME: JANE SMITH  DOB: 1990-08-22", (50, 60, 550, 85), 0.94),
-            ("INSURED ID: POL-9938102  PAYER: BLUE CROSS", (50, 95, 600, 120), 0.95),
-            ("PHYSICIAN NPI: 1982736405  PROVIDER NAME: DR. ROBERT TAYLOR", (50, 130, 720, 155), 0.96),
-            ("DIAGNOSIS: ICD-10 M54.50, R10.9", (50, 165, 480, 190), 0.93),
-            ("DOS: 2026-07-01  CPT: 99213  UNITS: 1  CHARGE: $180.00", (50, 210, 680, 235), 0.97),
-            ("TOTAL CHARGE: $180.00", (50, 250, 300, 275), 0.99),
-        ]
-        for text, bbox, conf in sample_lines:
-            blocks.append(OCRBlock(page=page, text=text, bbox=bbox, confidence=conf))
-        return blocks

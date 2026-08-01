@@ -8,7 +8,7 @@ import type { OCRResult } from "@/lib/types";
 // Shows the OCR text for the page currently selected in the left page viewer
 // (SplitInspector's displayPage). Paging on the left swaps the text shown here.
 export function OcrTextPanel({ ocr, page }: { ocr: OCRResult; page: number }) {
-  const current = ocr.pages.find((p) => p.page === page) ?? ocr.pages[0];
+  const current = ocr.pages.find((p) => p.page === page);
   const multi = ocr.pages.length > 1;
   const tables = current?.tables ?? [];
 
@@ -36,28 +36,33 @@ export function OcrTextPanel({ ocr, page }: { ocr: OCRResult; page: number }) {
             {ocr.table_count} table{ocr.table_count > 1 ? "s" : ""}
           </Badge>
         )}
-        {multi && current && (
+        {multi && (
           <Badge variant="outline" className="font-mono">
-            page {current.page}/{ocr.pages.length}
+            page {page}
           </Badge>
         )}
       </div>
 
       {ocr.warnings.length > 0 && (
         <div className="space-y-1 rounded-lg border border-review/40 bg-review-muted/30 p-3 text-xs text-review-foreground">
-          {ocr.warnings.map((w, i) => (
-            <div key={i} className="flex items-start gap-1.5">
-              <TriangleAlert className="mt-0.5 size-3 shrink-0" />
-              {w}
-            </div>
-          ))}
+          {ocr.warnings.map((w, i) => {
+            const displayWarn = w.replace(/^(docling|paddleocr|pytesseract|qwen-vl)/i, ocr.engine_name);
+            return (
+              <div key={i} className="flex items-start gap-1.5">
+                <TriangleAlert className="mt-0.5 size-3 shrink-0" />
+                {displayWarn}
+              </div>
+            );
+          })}
         </div>
       )}
 
       <ScrollArea className="flex-1 rounded-xl border bg-muted/30">
         <div className="space-y-4 p-4">
           <pre className="font-mono text-xs leading-relaxed whitespace-pre-wrap text-foreground">
-            {current?.text || "(no text extracted on this page)"}
+            {current
+              ? current.text || "(no text extracted on this page)"
+              : `(Page ${page} is being scanned / pending OCR...)`}
           </pre>
           {tables.map((t, i) => (
             <div key={i} className="space-y-1">
