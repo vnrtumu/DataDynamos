@@ -67,9 +67,9 @@ class PyTesseractEngine(OCREngine):
                         blocks.extend(docling_pages[0].blocks)
                         page_text_lines = [b.text for b in blocks]
                         for w in docling_warns:
-                            warnings.append(w.replace("docling", self.engine_name))
+                            warnings.append(w.replace("docling", self.name))
                 except Exception as exc:
-                    warnings.append(f"{self.engine_name} fallback to Docling failed: {exc}")
+                    warnings.append(f"{self.name} fallback to Docling failed: {exc}")
 
             full_text = "\n".join(page_text_lines)
             avg_conf = (
