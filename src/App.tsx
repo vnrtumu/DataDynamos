@@ -52,20 +52,20 @@ function Shell() {
               Rule Defining Settings
             </Button>
             <Button
-              variant={activeTab === "deliverables" ? "secondary" : "ghost"}
+              variant={activeTab === "architecture" ? "secondary" : "ghost"}
               size="sm"
-              onClick={() => setActiveTab("deliverables")}
+              onClick={() => setActiveTab("architecture")}
               className="text-xs gap-1.5"
             >
               <Layers className="size-3.5 text-sky-400" />
-              Deliverable & Architecture
+              Architecture
             </Button>
           </div>
         </div>
       </header>
 
       <main className="flex flex-1 flex-col">
-        {activeTab === "deliverables" ? (
+        {activeTab === "architecture" ? (
           <DeliverablesView />
         ) : activeTab === "rules" ? (
           <RuleSettingsView />
