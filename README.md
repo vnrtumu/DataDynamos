@@ -42,6 +42,27 @@ DataDynamos is an enterprise-grade, zero-retraining platform engineered to proce
 
 ---
 
+## 💻 Technology Stack
+
+| Layer | Component / Tool | Usage & Technology Role |
+| :--- | :--- | :--- |
+| **Backend Framework** | **FastAPI (Python 3.12)** | Asynchronous high-performance REST API with Uvicorn ASGI server and worker pools. |
+| **Package Management** | **Astral `uv`** | Lightning-fast Python dependency management, supply-chain locking, and extra sync. |
+| **Database & ORM** | **SQLModel + SQLite** | Type-safe ORM built on SQLAlchemy 2.0 & Pydantic v2; local file storage + PostgreSQL ready. |
+| **Computer Vision** | **OpenCV 4.x + PIL + PyMuPDF** | Image deskew, DPI scaling (200 DPI), blur/contrast pre-flight quality verification. |
+| **OCR Engines** | **PaddleOCR (PP-OCRv4)** | Primary CPU-bound fast OCR engine for machine-printed form grids ($0.0002/pg). |
+| | **PyTesseract (v5.3)** | Lightweight Tesseract engine for standard form text ($0.0001/pg). |
+| | **Docling** | Deep layout parsing engine for multi-column documents and Markdown table extraction. |
+| | **Qwen3-VL-235B** | Multimodal Vision-Language Model over OpenRouter for low-quality / noisy scans ($0.0030/pg). |
+| **LLM Structuring** | **LangExtract Framework** | Structured extraction framework connecting OpenRouter LLMs (DeepSeek-v4, GPT-4o, Claude 3.5 Sonnet). |
+| **Frontend Framework** | **React 18 + Vite** | SPA frontend built with TypeScript, Vite bundler, and React 18 hooks architecture. |
+| **UI & Styling** | **TailwindCSS v4 + shadcn/ui** | Modern glassmorphism UI components, responsive layout, and Lucide React icon set. |
+| **Canvas & Inspector** | **HTML5 Canvas API** | Interactive visual bounding box (`bbox`) highlight overlays on source document scans. |
+| **Reporting & Export** | **ReportLab + Pandas + OpenPyXL** | Automated generation of submission PDF documentation and Excel benchmark analytics. |
+| **Containerization** | **Docker + Docker Compose** | Multi-stage container builds for unified backend (`:8000`) and frontend (`:5173`) deployment. |
+
+---
+
 ## 🚀 Quick Start & Installation
 
 ### Option A: Docker Setup (Preferred)
