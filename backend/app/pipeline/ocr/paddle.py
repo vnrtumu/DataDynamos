@@ -67,9 +67,10 @@ class PaddleOCREngine(OCREngine):
                     if docling_pages and docling_pages[0].blocks:
                         blocks.extend(docling_pages[0].blocks)
                         page_text_lines = [b.text for b in blocks]
-                        warnings.extend(docling_warns)
+                        for w in docling_warns:
+                            warnings.append(w.replace("docling", self.engine_name))
                 except Exception as exc:
-                    warnings.append(f"PaddleOCR fallback to Docling failed: {exc}")
+                    warnings.append(f"{self.engine_name} fallback to Docling failed: {exc}")
 
             full_text = "\n".join(page_text_lines)
             avg_conf = (

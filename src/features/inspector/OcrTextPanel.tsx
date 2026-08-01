@@ -45,12 +45,15 @@ export function OcrTextPanel({ ocr, page }: { ocr: OCRResult; page: number }) {
 
       {ocr.warnings.length > 0 && (
         <div className="space-y-1 rounded-lg border border-review/40 bg-review-muted/30 p-3 text-xs text-review-foreground">
-          {ocr.warnings.map((w, i) => (
-            <div key={i} className="flex items-start gap-1.5">
-              <TriangleAlert className="mt-0.5 size-3 shrink-0" />
-              {w}
-            </div>
-          ))}
+          {ocr.warnings.map((w, i) => {
+            const displayWarn = w.replace(/^(docling|paddleocr|pytesseract|qwen-vl)/i, ocr.engine_name);
+            return (
+              <div key={i} className="flex items-start gap-1.5">
+                <TriangleAlert className="mt-0.5 size-3 shrink-0" />
+                {displayWarn}
+              </div>
+            );
+          })}
         </div>
       )}
 
