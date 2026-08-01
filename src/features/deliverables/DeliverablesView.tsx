@@ -73,107 +73,215 @@ export function DeliverablesView() {
   ];
 
   const handleDownloadArchitecture = () => {
-    const docMarkdown = `# Enterprise Healthcare Claims Processing System Architecture Specification
-**Platform**: DataDynamos Intelligent Healthcare Claims Processing Platform  
-**Target Scale**: 100 Million Pages / Year at < $0.0004 / Page Average Cost  
-**Date**: August 2026  
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      toast.error("Popup blocked. Please allow popups to download PDF.");
+      return;
+    }
 
----
+    const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DataDynamos_Healthcare_Claims_Architecture_Specification</title>
+  <style>
+    @page { size: A4 portrait; margin: 12mm; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #0f172a;
+      line-height: 1.5;
+      margin: 0;
+      padding: 15px;
+      font-size: 12px;
+    }
+    .header {
+      border-bottom: 2px solid #6366f1;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .title { font-size: 20px; font-weight: bold; color: #1e1b4b; margin: 0; }
+    .subtitle { font-size: 11px; color: #64748b; margin-top: 2px; }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      font-size: 10px;
+      font-weight: 600;
+      border-radius: 4px;
+      background: #e0e7ff;
+      color: #3730a3;
+      margin-left: 4px;
+    }
+    .section { margin-bottom: 20px; }
+    h2 { font-size: 15px; color: #312e81; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-top: 16px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11px; }
+    th, td { border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; }
+    th { background-color: #f1f5f9; font-weight: 600; color: #334155; }
+    tr:nth-child(even) { background-color: #f8fafc; }
+    .pipeline-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+      margin-top: 10px;
+      text-align: center;
+    }
+    .pipeline-step {
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 6px 2px;
+      background: #f8fafc;
+    }
+    .pipeline-step-title { font-weight: bold; font-size: 9px; color: #4338ca; }
+    .pipeline-step-tech { font-size: 8px; color: #64748b; margin-top: 2px; }
+    .footer {
+      margin-top: 30px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 8px;
+      font-size: 10px;
+      color: #94a3b8;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1 class="title">Enterprise Healthcare Claims System Architecture</h1>
+      <div class="subtitle">DataDynamos Autonomous Processing Platform — Technical Specifications</div>
+    </div>
+    <div>
+      <span class="badge">Scale: 100M Pages/Yr</span>
+      <span class="badge" style="background:#dcfce7; color:#166534;">Cost: $0.00037/pg</span>
+    </div>
+  </div>
 
-## 1. Executive Summary & Architectural Vision
+  <div class="section">
+    <h2>1. Executive Architectural Summary</h2>
+    <p>The DataDynamos platform is an enterprise-grade, zero-retraining claims ingestion, multi-engine OCR, field extraction, and automated rule validation engine. Designed to process 100 Million claim pages per year with a 93.5% Straight-Through Processing (STP) rate and $0.00037 average cost per page.</p>
+  </div>
 
-The DataDynamos platform is an enterprise-grade, zero-retraining claims ingestion, extraction, and rule validation engine designed for processing healthcare forms (CMS-1500, UB-04, Unstructured Claims, Commercial Invoices, and Legal Contracts) at scale.
+  <div class="section">
+    <h2>2. 7-Stage Autonomous Processing Pipeline</h2>
+    <div class="pipeline-grid">
+      <div class="pipeline-step"><div class="pipeline-step-title">1. Pre-scan</div><div class="pipeline-step-tech">OpenCV Deskew</div></div>
+      <div class="pipeline-step"><div class="pipeline-step-title">2. Classifier</div><div class="pipeline-step-tech">Format AI</div></div>
+      <div class="pipeline-step"><div class="pipeline-step-title">3. OCR Engine</div><div class="pipeline-step-tech">Multi-Engine</div></div>
+      <div class="pipeline-step"><div class="pipeline-step-title">4. Structurer</div><div class="pipeline-step-tech">LangExtract</div></div>
+      <div class="pipeline-step"><div class="pipeline-step-title">5. Rule Audit</div><div class="pipeline-step-tech">Python Rules</div></div>
+      <div class="pipeline-step"><div class="pipeline-step-title">6. Decision</div><div class="pipeline-step-tech">Reconciliation</div></div>
+      <div class="pipeline-step"><div class="pipeline-step-title">7. HITL Loop</div><div class="pipeline-step-tech">Self-Learning</div></div>
+    </div>
+  </div>
 
-### Key Performance Benchmarks
-- **Target Scale**: 100,000,000 document pages per year.
-- **Straight-Through Processing (STP) Rate**: 91.5% - 94.2% across machine-printed claim tiers.
-- **Extraction Accuracy**: 98.2% average across all field classes.
-- **Blended Processing Cost**: $0.00037 per page.
+  <div class="section">
+    <h2>3. Dynamic Multi-Engine OCR Orchestration</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>OCR Engine</th>
+          <th>Cost / Page</th>
+          <th>Processing Speed</th>
+          <th>Target Document Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>PaddleOCR (PP-OCRv4)</strong></td>
+          <td>$0.0002 / pg</td>
+          <td>~1.2s</td>
+          <td>Machine-printed CMS-1500 & UB-04 forms</td>
+        </tr>
+        <tr>
+          <td><strong>PyTesseract (v5.3)</strong></td>
+          <td>$0.0001 / pg</td>
+          <td>~0.8s</td>
+          <td>Standard clear scans & PDF raster pages</td>
+        </tr>
+        <tr>
+          <td><strong>Docling (Deep Layout)</strong></td>
+          <td>$0.0005 / pg</td>
+          <td>~3.5s</td>
+          <td>Multi-column documents & tables (Markdown output)</td>
+        </tr>
+        <tr>
+          <td><strong>Qwen3-VL-235B Vision AI</strong></td>
+          <td>$0.0030 / pg</td>
+          <td>~4.0s</td>
+          <td>Low-quality, noisy, or distorted unstructured claims</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
----
+  <div class="section">
+    <h2>4. Deterministic Rule Engine Audit Specifications</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Rule Code</th>
+          <th>Severity</th>
+          <th>Specification & Business Logic</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>billing_npi_nppes_active</code></td>
+          <td>HARD FAIL</td>
+          <td>10-digit NPI Luhn check digit algorithm validation (80840 prefix) against NPPES.</td>
+        </tr>
+        <tr>
+          <td><code>icd10_valid</code></td>
+          <td>HARD FAIL</td>
+          <td>Validates ICD-10-CM clinical diagnosis codes format (e.g. E11.9, G31.84).</td>
+        </tr>
+        <tr>
+          <td><code>revenue_charges_balance</code></td>
+          <td>HARD FAIL</td>
+          <td>UB-04 Institutional Audit: Sum of itemized revenue lines (Boxes 42–47) must equal total charges.</td>
+        </tr>
+        <tr>
+          <td><code>charge_balance</code></td>
+          <td>HARD FAIL</td>
+          <td>CMS-1500 Math Audit: Sum of (Line Charges x Units) must equal Box 28 Total Charge.</td>
+        </tr>
+        <tr>
+          <td><code>duplicate_invoice_no</code></td>
+          <td>HARD FAIL</td>
+          <td>Historical DB check blocking double payments for previously processed invoice numbers.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 
-## 2. 7-Stage End-to-End Processing Pipeline
+  <div class="section">
+    <h2>5. Self-Learning HITL Feedback Memory Loop</h2>
+    <p>When operators correct field extractions in the UI, corrections are stored in <code>data/feedback_memory.json</code> and injected as active learned rules into future LLM extraction prompts—achieving continuous learning without retraining ML weights.</p>
+  </div>
 
-\`\`\`
-[ Stage 1: Pre-scan ] -> [ Stage 2: AI Classifier ] -> [ Stage 3: OCR Engine ] -> [ Stage 4: LLM Structurer ] -> [ Stage 5: Rule Audit ] -> [ Stage 6: Decision Agent ] -> [ Stage 7: HITL Loop ]
-\`\`\`
+  <div class="footer">
+    Generated by DataDynamos Architecture Specification Engine — August 2026
+  </div>
 
-### Stage 1: Pre-scan Quality & Deskew Engine
-- **Technologies**: OpenCV 4.x, NumPy, PIL.
-- **Functionality**: Performs automatic page deskew (up to ±25°), resolution normalization (200 DPI), and advisory blur/contrast pre-flight checks.
+  <script>
+    window.onload = function() {
+      setTimeout(function() {
+        window.print();
+      }, 500);
+    };
+  </script>
+</body>
+</html>
+    `;
 
-### Stage 2: Automatic Document Format Classifier
-- **Technologies**: Heuristic Layout Classifier & OpenRouter AI Tier Classifier.
-- **Functionality**: Automatically identifies uploaded document types:
-  - **Tier A**: CMS-1500 Single Page
-  - **Tier B**: CMS-1500 Multi-page with clinical attachments
-  - **Tier C**: UB-04 Institutional Hospital Claim
-  - **Tier D**: Unstructured Medical Claim / Bills
-  - **Commercial Invoices & Contracts**
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
 
-### Stage 3: Dynamic Multi-Engine OCR Orchestrator
-- **Engines Available**:
-  - **PaddleOCR (PP-OCRv4)**: High-speed, zero-cost CPU OCR engine for machine-printed text ($0.0002/pg).
-  - **PyTesseract (v5.3)**: Lightweight Tesseract OCR engine for standard layout forms ($0.0001/pg).
-  - **Docling (Deep Layout Parsing)**: Layout-aware deep parsing for multi-column documents & tables ($0.0005/pg).
-  - **Qwen3-VL-235B**: Multimodal Vision-Language Model over OpenRouter for low-quality/noisy scans ($0.0030/pg).
-
-### Stage 4: Structured LLM Field Extractor & Grounding Layer
-- **Technologies**: LangExtract framework, OpenRouter LLMs (DeepSeek-v4, GPT-4o, Claude 3.5 Sonnet).
-- **Protocol**: Converts raw OCR into a structured JSON payload containing bounding box coordinates (\`bbox\`), page text blocks, and Markdown tables. Passes this payload into LLMs for field extraction with exact character-level grounding.
-
-### Stage 5: Deterministic Business Rule & Audit Engine
-- **Technologies**: Python Rule Engine, ANSI Reason Code Annotator.
-- **Rules Implemented**:
-  - **NPI Luhn Checksum**: 10-digit NPI Luhn algorithm validation (\`80840\` US health prefix).
-  - **ICD-10-CM Audit**: Pattern validation for diagnosis codes (e.g. \`E11.9\`, \`G31.84\`).
-  - **CPT/HCPCS Check**: 5-character procedure code format validation.
-  - **Revenue Charges Balance**: Checks $\\sum (\\text{Revenue Lines}) = \\text{Total Charges}$ on UB-04 claims.
-  - **CMS-1500 Charge Balance**: Checks $\\sum (\\text{Line Charges} \\times \\text{Units}) = \\text{Total Charge}$.
-  - **Duplicate Invoice Safeguard**: Historical DB lookup for duplicate invoice numbers.
-
-### Stage 6: Decision Agent & Confidence Reconciliation
-- **Technologies**: Rule Guardrails + LLM Reasoning Agent.
-- **Verdicts**: \`approve\` (auto-approve), \`needs_review\` (routed to HITL), \`flag\` (hard rule failure). Deterministic code rules take precedence over LLM reasoning.
-
-### Stage 7: Self-Learning HITL Feedback Memory Loop
-- **Technologies**: Human-in-the-Loop Inline Editor, \`feedback_memory.json\` Persistent Storage.
-- **Functionality**: When operators edit fields in the UI, corrections are stored as learned rules and injected into future LLM extraction prompts—achieving continuous learning without retraining ML weights.
-
----
-
-## 3. Technology Stack & Infrastructure
-
-- **Backend Architecture**: FastAPI (Python 3.12), Uvicorn, SQLModel (SQLite / PostgreSQL ready), AsyncIO Thread Executors.
-- **Frontend Architecture**: React 18, Vite, TypeScript, TailwindCSS, Lucide Icons, Canvas Bounding Box Overlay Viewer.
-- **LLM / VLM API Gateway**: OpenRouter API (\`https://openrouter.ai/api/v1\`).
-
----
-
-## 4. Cost & Throughput Financial Model (100M Pages/Year)
-
-| Claim Tier | Target Vol (Pgs/Yr) | Primary Engine | Cost / Page | Total Annual Cost |
-| :--- | :--- | :--- | :--- | :--- |
-| Tier A (CMS-1500) | 40,000,000 | PaddleOCR / PyTesseract | $0.0003 | $12,000 |
-| Tier B (CMS-1500 Multi) | 25,000,000 | PaddleOCR + Relevance Filter | $0.0004 | $10,000 |
-| Tier C (UB-04) | 25,000,000 | PyTesseract / PaddleOCR | $0.0003 | $7,500 |
-| Tier D (Unstructured) | 10,000,000 | Hybrid OCR + VLM Escalation | $0.0018 | $18,000 |
-| **Total Blended** | **100,000,000** | **Multi-Engine Hybrid** | **$0.000375 avg** | **$47,500 / Yr** |
-
----
-*Generated by DataDynamos Architecture Engine — August 2026*
-`;
-
-    const blob = new Blob([docMarkdown], { type: "text/markdown;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", "DataDynamos_Healthcare_Claims_Architecture_Specification.md");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Architecture Specification Document downloaded!", {
-      description: "Saved DataDynamos_Healthcare_Claims_Architecture_Specification.md to downloads.",
+    toast.success("PDF Download initiated!", {
+      description: "Select 'Save as PDF' in the print dialog to export the Architecture document.",
     });
   };
 
@@ -202,10 +310,10 @@ The DataDynamos platform is an enterprise-grade, zero-retraining claims ingestio
           <div className="flex flex-wrap items-center gap-3">
             <Button
               onClick={handleDownloadArchitecture}
-              className="gap-2 bg-purple-600 hover:bg-purple-500 text-white shadow-md text-xs font-semibold px-4 py-2"
+              className="gap-2 bg-purple-600 hover:bg-purple-500 text-white shadow-md text-xs font-semibold px-4 py-2 cursor-pointer"
             >
               <Download className="size-4" />
-              Download Architecture Specification (.md)
+              Download Architecture Specification (PDF)
             </Button>
           </div>
         </div>
