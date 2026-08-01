@@ -58,7 +58,7 @@ function Shell() {
               className="text-xs gap-1.5"
             >
               <Layers className="size-3.5 text-sky-400" />
-              Hackathon Deliverables & Architecture
+              Deliverable & Architecture
             </Button>
           </div>
         </div>
