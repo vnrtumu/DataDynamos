@@ -381,8 +381,6 @@ export function StructuredPanel({
         </div>
         <button
           type="button"
-        <button
-          type="button"
           disabled={submitting || submitted}
           onClick={handleSubmitFeedback}
           className={cn(
