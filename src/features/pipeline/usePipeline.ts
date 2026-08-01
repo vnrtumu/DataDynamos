@@ -424,12 +424,20 @@ export function usePipeline(): UsePipeline {
   const runStage = useCallback(
     async (stage: StageKey) => {
       if (!state.document) return;
-      await execStage(state.document.id, stage, {
+      const ok = await execStage(state.document.id, stage, {
         engine: state.activeEngine,
         docType: state.docType,
         llmModel: state.activeLlmModel,
         setActive: true,
       });
+      if (ok && stage === "structure") {
+        await execStage(state.document.id, "decide", {
+          engine: state.activeEngine,
+          docType: state.docType,
+          llmModel: state.activeLlmModel,
+          setActive: true,
+        });
+      }
     },
     [state.document, state.activeEngine, state.docType, state.activeLlmModel, execStage],
   );
