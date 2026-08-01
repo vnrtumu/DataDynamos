@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     prescan_timeout_s: float = 120.0  # over this -> 504, not a hang.
 
     # OCR engine layer (Phase 3). Engines swappable behind a common interface.
-    ocr_default_engine: str = "docling"  # used when ?engine= is omitted.
+    ocr_default_engine: str = "paddleocr"  # used when ?engine= is omitted.
     # Load OCR models at startup so the first request skips the cold download.
     # Off by default (fast boot for tests/dev); turn on for the demo via `make warm`.
     pre_warm_models: bool = False

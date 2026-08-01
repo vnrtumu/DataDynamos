@@ -38,7 +38,7 @@ def classify_document(doc: Document) -> tuple[DocType, str, float, str]:
     text_upper = extracted_text.upper()
 
     # 1. Tier A & B: CMS-1500 Standard Claims
-    if "cms1500" in filename_lower or "cms-1500" in filename_lower or "cms_1500" in filename_lower or "CMS-1500" in text_upper or "CMS 1500" in text_upper or "HEALTH INSURANCE CLAIM FORM" in text_upper:
+    if "cms1500" in filename_lower or "cms-1500" in filename_lower or "cms_1500" in filename_lower or "1500" in filename_lower or "CMS-1500" in text_upper or "CMS 1500" in text_upper or "HEALTH INSURANCE CLAIM FORM" in text_upper:
         if page_count > 1:
             doc_type = DocType.cms1500_multi
             reason = f"Auto-detected Tier B: CMS-1500 Multi-Page ({page_count} pages with attachments)"
@@ -56,7 +56,7 @@ def classify_document(doc: Document) -> tuple[DocType, str, float, str]:
         reason = "Auto-detected Tier C: UB-04 Institutional Claim Form"
 
     # 3. Tier D: Unstructured Healthcare Claims
-    elif "MEDICAL BILL" in text_upper or "CLINICAL" in text_upper or "DISCHARGE NOTE" in text_upper or "unstructured" in filename_lower or "claim" in filename_lower:
+    elif "MEDICAL BILL" in text_upper or "CLINICAL" in text_upper or "DISCHARGE NOTE" in text_upper or "unstructured" in filename_lower or "note" in filename_lower:
         doc_type = DocType.unstructured_claim
         engine = "qwen-vl"
         confidence = 0.94

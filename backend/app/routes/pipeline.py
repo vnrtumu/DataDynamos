@@ -192,6 +192,17 @@ def get_ocr(
     return OCRResult(**result)
 
 
+@router.get("/ocr/progress")
+def get_ocr_progress(doc_id: str) -> dict:
+    """Return the current per-page OCR scanning progress for a document.
+
+    Returns ``{current_page, total_pages, engine, done}`` while OCR is running.
+    Returns an empty dict when no progress data is available.
+    """
+    from app import storage
+    return storage.read_ocr_progress(doc_id) or {}
+
+
 @router.post("/structure", response_model=StructuredResult)
 async def structure_document(
     doc_id: str,

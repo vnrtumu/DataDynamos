@@ -56,9 +56,39 @@ def assemble_unstructured(flats: list[FlatExtraction], ctx: GroundingCtx) -> Uns
     )
 
 
+def _examples() -> list:
+    import langextract as lx
+
+    return [
+        lx.data.ExampleData(
+            text=(
+                "Patient: KARNO, YOLANA\n"
+                "Service Date: 2026-07-16\n"
+                "Provider: Kim E VanGeffen PhD\n"
+                "Claim Number: CLM-990086221\n"
+                "Total Amount: $1675.00\n"
+                "Diagnosis: G31.84, F02.81\n"
+                "Notes: Healthcare claim treatment provided for diagnosis G31.84, F02.81"
+            ),
+            extractions=[
+                lx.data.Extraction(extraction_class="patient_name", extraction_text="KARNO, YOLANA"),
+                lx.data.Extraction(extraction_class="service_date", extraction_text="2026-07-16"),
+                lx.data.Extraction(extraction_class="provider_name", extraction_text="Kim E VanGeffen PhD"),
+                lx.data.Extraction(extraction_class="claim_number", extraction_text="CLM-990086221"),
+                lx.data.Extraction(extraction_class="total_amount", extraction_text="$1675.00"),
+                lx.data.Extraction(extraction_class="diagnosis", extraction_text="G31.84, F02.81"),
+                lx.data.Extraction(
+                    extraction_class="notes",
+                    extraction_text="Healthcare claim treatment provided for diagnosis G31.84, F02.81",
+                ),
+            ],
+        )
+    ]
+
+
 SPEC = DocTypeSpec(
     prompt=PROMPT,
-    examples_factory=lambda: [],
+    examples_factory=_examples,
     extraction_classes=EXTRACTION_CLASSES,
     field_model=UnstructuredClaimFields,
     assemble=assemble_unstructured,

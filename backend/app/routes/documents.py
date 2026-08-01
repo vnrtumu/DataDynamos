@@ -6,7 +6,7 @@ from sqlmodel import Session, delete, select
 from app import storage
 from app.config import settings
 from app.db import get_session
-from app.models import DocType, Document, PipelineRun
+from app.models import DocType, Document, DocumentStatus, PipelineRun
 from app.schemas import (
     AccuracyMetrics,
     CostSummary,
@@ -61,14 +61,6 @@ async def upload_document(
     session: Session = Depends(get_session),
 ) -> DocumentDetail:
     """Upload a PDF/PNG/JPG/TIFF, persist it, and rasterize pages to PNGs."""
-    try:
-        ext, mime = storage.detect_type(file.filename or "")
-    except storage.UnsupportedFileType:
-        raise HTTPException(
-            status_code=415,
-            detail=f"Unsupported file type. Accepted: {', '.join(sorted(storage.ALLOWED_TYPES))}",
-        ) from None
-
     content = await file.read()
     max_bytes = settings.max_upload_mb * 1024 * 1024
     if len(content) > max_bytes:
@@ -78,6 +70,14 @@ async def upload_document(
         )
     if not content:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+
+    try:
+        ext, mime = storage.detect_type(file.filename or "", content)
+    except storage.UnsupportedFileType:
+        raise HTTPException(
+            status_code=415,
+            detail=f"Unsupported file type. Accepted: {', '.join(sorted(storage.ALLOWED_TYPES))}",
+        ) from None
 
     doc = Document(filename=file.filename or f"upload{ext}", doc_type=doc_type, mime=mime)
     original = storage.save_original(doc.id, ext, content)

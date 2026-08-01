@@ -14,6 +14,7 @@ warm:
 
 # Run backend (:8000) and frontend (:5173) together. Ctrl+C stops both.
 dev:
+	@lsof -ti:8000 | xargs kill -9 2>/dev/null || true
 	@trap 'kill 0' EXIT; \
 	(cd backend && PYTORCH_ENABLE_MPS_FALLBACK=1 uv run uvicorn app.main:app --reload --port 8000) & \
 	pnpm dev; \
@@ -21,6 +22,7 @@ dev:
 
 # Backend only — FastAPI on :8000 with autoreload.
 dev-backend:
+	@lsof -ti:8000 | xargs kill -9 2>/dev/null || true
 	cd backend && PYTORCH_ENABLE_MPS_FALLBACK=1 uv run uvicorn app.main:app --reload --port 8000
 
 # Frontend only — Vite dev server on :5173.

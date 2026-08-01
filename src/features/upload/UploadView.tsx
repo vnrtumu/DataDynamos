@@ -43,9 +43,9 @@ export function UploadView() {
   const [showAdvanced, setShowAdvanced] = useState(true);
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-8 px-4 py-8 sm:px-6">
+    <div className="mx-auto flex h-full w-full max-w-6xl flex-col items-center gap-6 px-4 py-6 sm:px-6 overflow-y-auto">
       {/* Hero Title Header */}
-      <div className="flex w-full max-w-3xl flex-col items-center gap-3 text-center">
+      <div className="flex shrink-0 w-full max-w-3xl flex-col items-center gap-3 text-center">
         <div className="inline-flex items-center gap-2 rounded-full border bg-emerald-500/10 border-emerald-500/30 px-3.5 py-1 text-xs font-medium text-emerald-400 shadow-xs">
           <Bot className="size-3.5 text-emerald-400" />
           100% Automated Zero-Intervention Pipeline Enabled
@@ -59,7 +59,7 @@ export function UploadView() {
       </div>
 
       {/* Main Ingestion Card */}
-      <Card className="w-full border-border/70 shadow-sm">
+      <Card className="w-full shrink-0 border-border/70 shadow-sm">
         <CardHeader className="pb-3 border-b bg-muted/20">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
@@ -157,7 +157,7 @@ export function UploadView() {
       </Card>
 
       {/* Pipeline Stage Footnote */}
-      <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-2 text-xs text-muted-foreground">
+      <div className="flex shrink-0 flex-wrap items-center justify-center gap-x-1.5 gap-y-2 text-xs text-muted-foreground">
         {STAGES.map((s, i) => (
           <div key={s.label} className="flex items-center gap-1.5">
             <span className="rounded-lg border bg-card/80 px-3 py-1 shadow-2xs">
@@ -172,7 +172,9 @@ export function UploadView() {
       </div>
 
       {/* Document Library */}
-      <DocumentLibrary />
+      <div className="w-full shrink-0">
+        <DocumentLibrary />
+      </div>
     </div>
   );
 }

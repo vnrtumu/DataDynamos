@@ -183,10 +183,10 @@ export function Stepper() {
                   </div>
                 </div>
 
-                {document && (status === "done" || status === "error") && !anyRunning && (
+                {document && !anyRunning && (
                   <button
                     onClick={() => runStage(stage)}
-                    title={`Re-run ${STAGE_LABEL[stage]}`}
+                    title={`Run / Re-run ${STAGE_LABEL[stage]}`}
                     className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   >
                     <RotateCw className="size-3" />
