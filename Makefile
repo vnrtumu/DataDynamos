@@ -37,3 +37,8 @@ test:
 reset:
 	rm -rf backend/data
 	@echo "Cleared backend/data/"
+
+# Deploy backend Docker container to Hugging Face Spaces (Usage: make deploy-hf USERNAME=myhfuser)
+deploy-hf:
+	@./scripts/deploy_hf.sh $(USERNAME)
+
