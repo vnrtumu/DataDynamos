@@ -68,10 +68,6 @@ def run_structuring(
         if claim_pages:
             full_text = "\n\n".join(claim_pages)
 
-    ocr_json_str = _build_ocr_json_payload(ocr_result, full_text)
-
-    ctx = GroundingCtx(full_text=full_text, ocr_result=ocr_result)
-
     start = perf_counter()
     if provider == "mock" or not settings.openrouter_api_key:
         flats = _structure_mock(doc_type, full_text)
@@ -80,7 +76,7 @@ def run_structuring(
     else:
         try:
             flats, artifact = _structure_langextract(
-                spec, ocr_json_str, model_id=target_model, ocr_conf=ocr_result.avg_confidence
+                spec, full_text, model_id=target_model, ocr_conf=ocr_result.avg_confidence
             )
             model = target_model
         except Exception as exc:
@@ -187,9 +183,9 @@ def _build_ocr_json_payload(ocr_result: OCRResult, full_text: str) -> str:
 
 
 def _structure_langextract(
-    spec, ocr_json_input: str, model_id: str = "", ocr_conf: float | None = None
+    spec, full_text: str, model_id: str = "", ocr_conf: float | None = None
 ) -> tuple[list[FlatExtraction], str]:
-    """Run LangExtract against OpenRouter with structured OCR JSON input and normalize to FlatExtraction[]."""
+    """Run LangExtract against OpenRouter with full text input and normalize to FlatExtraction[]."""
     if not settings.openrouter_api_key:
         raise ValueError("OPENROUTER_API_KEY is not set; the langextract provider needs it.")
 
@@ -199,12 +195,7 @@ def _structure_langextract(
     from langextract.factory import ModelConfig
 
     # Self-Learning HITL Feedback Loop: Read operator corrections and append as learned rules
-    prompt = spec.prompt + (
-        "\n\n### Input Data Format:\n"
-        "You are provided with a structured OCR document JSON payload containing `full_text`, per-page `text`, "
-        "`blocks` (with bounding box coordinates & labels), and Markdown `tables`. "
-        "Extract all requested healthcare claim fields accurately from this structured JSON document payload."
-    )
+    prompt = spec.prompt
     memory_path = Path("data/feedback_memory.json")
     if memory_path.exists():
         try:
@@ -231,7 +222,7 @@ def _structure_langextract(
         },
     )
     annotated = lx.extract(
-        text_or_documents=ocr_json_input,
+        text_or_documents=full_text,
         prompt_description=prompt,
         examples=spec.examples_factory(),
         config=config,
