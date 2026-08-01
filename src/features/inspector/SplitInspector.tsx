@@ -74,7 +74,7 @@ export function SplitInspector() {
         <Tabs defaultValue="structured" className="w-full">
           <TabsList className="grid grid-cols-6 w-full">
             <TabsTrigger value="ocr">OCR text</TabsTrigger>
-            <TabsTrigger value="ocr-json">JSON Structure</TabsTrigger>
+            <TabsTrigger value="ocr-json">JSON</TabsTrigger>
             <TabsTrigger value="structured">Structured</TabsTrigger>
             <TabsTrigger value="decision">Decision</TabsTrigger>
             <TabsTrigger value="compare">Compare</TabsTrigger>
