@@ -77,6 +77,7 @@ function initialState(): PipelineState {
     decision: null,
     perStageStatus: idleStatus(),
     perStageTiming: {},
+    activeEngine: "paddleocr",
     activeLlmModel:
       (import.meta.env.VITE_DEFAULT_LLM_MODEL as LlmModelOption) ||
       "deepseek-v4",
