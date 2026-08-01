@@ -68,6 +68,8 @@ def run_structuring(
         if claim_pages:
             full_text = "\n\n".join(claim_pages)
 
+    ctx = GroundingCtx(full_text=full_text, ocr_result=ocr_result)
+
     start = perf_counter()
     if provider == "mock" or not settings.openrouter_api_key:
         flats = _structure_mock(doc_type, full_text)
