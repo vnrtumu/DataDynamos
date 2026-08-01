@@ -11,6 +11,7 @@ dependencies = [
     "pydantic-settings>=2.14.1",
     "pymupdf>=1.27.2.3",
     "python-multipart>=0.0.29",
+    "reportlab>=4.5.1",
     "sqlmodel>=0.0.38",
     "uvicorn[standard]>=0.48.0",
 ]
