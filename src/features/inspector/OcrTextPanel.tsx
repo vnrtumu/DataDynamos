@@ -8,7 +8,7 @@ import type { OCRResult } from "@/lib/types";
 // Shows the OCR text for the page currently selected in the left page viewer
 // (SplitInspector's displayPage). Paging on the left swaps the text shown here.
 export function OcrTextPanel({ ocr, page }: { ocr: OCRResult; page: number }) {
-  const current = ocr.pages.find((p) => p.page === page) ?? ocr.pages[0];
+  const current = ocr.pages.find((p) => p.page === page);
   const multi = ocr.pages.length > 1;
   const tables = current?.tables ?? [];
 
@@ -36,9 +36,9 @@ export function OcrTextPanel({ ocr, page }: { ocr: OCRResult; page: number }) {
             {ocr.table_count} table{ocr.table_count > 1 ? "s" : ""}
           </Badge>
         )}
-        {multi && current && (
+        {multi && (
           <Badge variant="outline" className="font-mono">
-            page {current.page}/{ocr.pages.length}
+            page {page}
           </Badge>
         )}
       </div>
@@ -57,7 +57,9 @@ export function OcrTextPanel({ ocr, page }: { ocr: OCRResult; page: number }) {
       <ScrollArea className="flex-1 rounded-xl border bg-muted/30">
         <div className="space-y-4 p-4">
           <pre className="font-mono text-xs leading-relaxed whitespace-pre-wrap text-foreground">
-            {current?.text || "(no text extracted on this page)"}
+            {current
+              ? current.text || "(no text extracted on this page)"
+              : `(Page ${page} is being scanned / pending OCR...)`}
           </pre>
           {tables.map((t, i) => (
             <div key={i} className="space-y-1">

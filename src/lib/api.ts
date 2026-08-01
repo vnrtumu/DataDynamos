@@ -55,9 +55,13 @@ async function request<T>(path: string, opts: RequestOpts = {}): Promise<T> {
         .map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`)
         .join("&")
     : "";
+  const headers: Record<string, string> = {};
+  if (typeof body === "string") {
+    headers["Content-Type"] = "application/json";
+  }
   let res: Response;
   try {
-    res = await fetch(`${API_BASE_URL}${path}${qs}`, { method, body, signal });
+    res = await fetch(`${API_BASE_URL}${path}${qs}`, { method, headers, body, signal });
   } catch {
     throw new ApiError(0, "Cannot reach the backend — is it running on :8000?");
   }
@@ -171,6 +175,16 @@ export async function runStructure(
 
 export async function runDecide(id: string): Promise<DecisionResult> {
   return request<DecisionResult>(`/documents/${id}/decide`, { method: "POST" });
+}
+
+export async function submitHitlFeedback(
+  id: string,
+  feedback: object,
+): Promise<{ status: string; message: string }> {
+  return request<{ status: string; message: string }>(`/documents/${id}/feedback`, {
+    method: "POST",
+    body: JSON.stringify(feedback),
+  });
 }
 
 export { API_BASE_URL };

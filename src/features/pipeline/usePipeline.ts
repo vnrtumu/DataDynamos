@@ -77,11 +77,10 @@ function initialState(): PipelineState {
     decision: null,
     perStageStatus: idleStatus(),
     perStageTiming: {},
-    activeEngine: "docling",
     activeLlmModel:
       (import.meta.env.VITE_DEFAULT_LLM_MODEL as LlmModelOption) ||
       "deepseek-v4",
-    docType: "invoice",
+    docType: "cms1500",
     ingesting: false,
     error: null,
   };
@@ -152,7 +151,12 @@ function reducer(state: PipelineState, action: Action): PipelineState {
         ingesting: true,
       };
     case "INGEST_DONE":
-      return { ...state, ingesting: false, document: action.document };
+      return {
+        ...state,
+        ingesting: false,
+        document: action.document,
+        docType: action.document.doc_type ?? state.docType,
+      };
     case "INGEST_ERROR":
       return { ...state, ingesting: false };
     case "STAGE_START":
@@ -188,6 +192,11 @@ function reducer(state: PipelineState, action: Action): PipelineState {
         perStageTiming: action.setActive
           ? { ...state.perStageTiming, ocr: action.result.latency_ms }
           : state.perStageTiming,
+      };
+    case "PARTIAL_OCR":
+      return {
+        ...state,
+        ocr: action.result,
       };
     case "STRUCTURE_DONE":
       return {
@@ -252,6 +261,7 @@ export interface UsePipeline extends PipelineState {
   setDocType: (t: DocType) => void;
   setActiveEngine: (e: OcrEngine) => void;
   setLlmModel: (m: LlmModelOption) => void;
+  setPartialOcr: (result: OCRResult) => void;
   ingestFile: (file: File) => Promise<void>;
   openDocument: (id: string) => Promise<void>;
   runStage: (stage: StageKey) => Promise<void>;
@@ -341,18 +351,19 @@ export function usePipeline(): UsePipeline {
     async (file: File) => {
       dispatch({ type: "INGEST_START" });
       const engine = state.activeEngine;
-      const docType = state.docType;
       const llmModel = state.activeLlmModel;
       let doc: DocumentDetail;
       try {
-        doc = await uploadDocument(file, docType);
+        // Pass undefined for docType so backend AI classifier auto-detects Tier A-D format
+        doc = await uploadDocument(file, undefined);
       } catch (e) {
         dispatch({ type: "INGEST_ERROR" });
         toast.error("Upload failed", { description: errMessage(e) });
         return;
       }
+      const resolvedDocType = doc.doc_type ?? state.docType;
       dispatch({ type: "INGEST_DONE", document: doc });
-      await runAll(doc.id, engine, docType, llmModel);
+      await runAll(doc.id, engine, resolvedDocType, llmModel);
     },
     [state.activeEngine, state.docType, state.activeLlmModel, runAll],
   );
@@ -454,6 +465,10 @@ export function usePipeline(): UsePipeline {
     (m: LlmModelOption) => dispatch({ type: "SET_ACTIVE_LLM_MODEL", model: m }),
     [],
   );
+  const setPartialOcr = useCallback(
+    (result: OCRResult) => dispatch({ type: "PARTIAL_OCR", result }),
+    [],
+  );
   const reset = useCallback(() => dispatch({ type: "RESET" }), []);
 
   return useMemo(
@@ -462,6 +477,7 @@ export function usePipeline(): UsePipeline {
       setDocType,
       setActiveEngine,
       setLlmModel,
+      setPartialOcr,
       ingestFile,
       openDocument,
       runStage,
@@ -473,6 +489,7 @@ export function usePipeline(): UsePipeline {
       setDocType,
       setActiveEngine,
       setLlmModel,
+      setPartialOcr,
       ingestFile,
       openDocument,
       runStage,

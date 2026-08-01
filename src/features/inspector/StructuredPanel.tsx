@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { CornerDownRight, Pencil, Check, X, Sparkles, CheckCircle2 } from "lucide-react";
+import { CornerDownRight, Pencil, Check, X, Sparkles, CheckCircle2, Download, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,
   TableBody,
@@ -15,7 +15,7 @@ import { formatPct } from "@/lib/format";
 import { buildFieldTree, displayValue, isFieldValue, type FieldLeaf } from "@/lib/fields";
 import type { Alignment, Grounding, StructuredResult } from "@/lib/types";
 import { CostSummaryCard } from "@/components/CostSummaryCard";
-import { toast } from "sonner";
+import { submitHitlFeedback } from "@/lib/api";
 
 function alignmentDot(grounding: Grounding | null | undefined): {
   cls: string;
@@ -77,6 +77,7 @@ function Leaf({
     leaf.fv.grounding?.alignment &&
     leaf.fv.grounding.alignment !== "ungrounded";
 
+<<<<<<< HEAD
   const handleSave = () => {
     onUpdateValue(leaf.path, editValue);
     setIsEditing(false);
@@ -84,22 +85,30 @@ function Leaf({
 
   const isEdited = Boolean((leaf.fv as Record<string, unknown>).isEdited);
 
+=======
+>>>>>>> origin/feature/mani-v0.1
   return (
     <div
       onMouseEnter={() => onHover(leaf.path)}
       onMouseLeave={() => onHover(null)}
       className={cn(
+<<<<<<< HEAD
         "group flex items-center justify-between gap-3 rounded-lg px-3 py-2 transition-colors",
         groundable
           ? "cursor-pointer hover:bg-brand/[0.06]"
           : "hover:bg-muted/50",
         indent && "ml-4",
+=======
+        "group flex items-center justify-between gap-2 rounded-md px-2 py-1 text-xs transition-colors",
+        groundable ? "cursor-pointer hover:bg-brand/5" : "hover:bg-muted/40",
+>>>>>>> origin/feature/mani-v0.1
       )}
     >
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 items-center gap-1.5">
         {indent && (
-          <CornerDownRight className="size-3 shrink-0 text-muted-foreground/50" />
+          <CornerDownRight className="size-3 text-muted-foreground/40 shrink-0" />
         )}
+<<<<<<< HEAD
         <span className="text-sm text-muted-foreground">{leaf.label}</span>
       </div>
 
@@ -177,6 +186,8 @@ function Leaf({
         )}
       </div>
     </div>
+      </div>
+    </div>
   );
 }
 
@@ -242,6 +253,8 @@ export function StructuredPanel({
 }) {
   const [fields, setFields] = useState<Record<string, unknown>>(result.fields);
   const [modifiedCount, setModifiedCount] = useState<number>(0);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     setFields(result.fields);
@@ -298,6 +311,39 @@ export function StructuredPanel({
 
   const tree = buildFieldTree(fields);
 
+  const handleExportJson = () => {
+    const dataStr =
+      "data:text/json;charset=utf-8," +
+      encodeURIComponent(JSON.stringify(fields, null, 2));
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `extracted_claim_${result.document_id}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    toast.success("Structured fields exported as JSON!");
+  };
+
+  const handleSubmitFeedback = async () => {
+    setSubmitting(true);
+    try {
+      const res = await submitHitlFeedback(result.document_id, {
+        corrections: fields,
+        notes: "User verified and updated structured fields in Stage 7 HITL Queue",
+      });
+      setSubmitted(true);
+      toast.success("Stage 7 HITL Feedback Recorded!", {
+        description: res.message || "LLM learning memory updated with human correction rules.",
+      });
+    } catch (e) {
+      toast.error("Feedback Submission Failed", {
+        description: e instanceof Error ? e.message : "Could not save HITL feedback.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2 text-xs">
@@ -322,6 +368,15 @@ export function StructuredPanel({
           <Badge variant="outline">
             {formatPct(result.extraction_confidence)} confidence
           </Badge>
+          <button
+            type="button"
+            onClick={handleExportJson}
+            className="flex items-center gap-1.5 rounded-md border bg-card px-2.5 py-1 text-[11px] font-semibold text-foreground hover:bg-muted transition-colors cursor-pointer shadow-2xs"
+            title="Download extracted fields as JSON"
+          >
+            <Download className="size-3.5 text-sky-400" />
+            Export JSON
+          </button>
         </div>
       </div>
 
@@ -337,40 +392,38 @@ export function StructuredPanel({
         </div>
         <button
           type="button"
-          onClick={async () => {
-            try {
-              const res = await fetch(`/documents/${result.document_id}/feedback`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  corrections: fields,
-                  notes: "User verified and updated structured fields in Stage 7 HITL Queue",
-                }),
-              });
-              if (res.ok) {
-                toast.success("Stage 7 HITL Feedback Saved!", {
-                  description: "LLM learning memory updated with human correction rules for future documents.",
-                });
-              } else {
-                toast.success("Stage 7 HITL Feedback Recorded!", {
-                  description: "Human corrections saved to active memory store.",
-                });
-              }
-            } catch (e) {
-              console.error(e);
-              toast.success("Stage 7 HITL Feedback Recorded!", {
-                description: "Human corrections saved to active memory store.",
-              });
-            }
-          }}
-          className="rounded-md bg-purple-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-purple-500 transition-colors shadow-xs flex items-center gap-1.5"
+        <button
+          type="button"
+          disabled={submitting || submitted}
+          onClick={handleSubmitFeedback}
+          className={cn(
+            "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold text-white transition-all shadow-xs cursor-pointer",
+            submitted
+              ? "bg-emerald-600 hover:bg-emerald-600 cursor-default"
+              : "bg-purple-600 hover:bg-purple-500 active:scale-95",
+            submitting && "opacity-75 pointer-events-none"
+          )}
         >
-          <CheckCircle2 className="size-3.5" />
-          Submit HITL Feedback & Update Learning Memory
+          {submitting ? (
+            <>
+              <Loader2 className="size-3.5 animate-spin" />
+              Recording Feedback…
+            </>
+          ) : submitted ? (
+            <>
+              <CheckCircle2 className="size-3.5" />
+              HITL Memory Updated
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="size-3.5" />
+              Submit HITL Feedback & Update Learning Memory
+            </>
+          )}
         </button>
       </div>
 
-      <ScrollArea className="flex-1 rounded-xl border">
+      <div className="rounded-xl border shadow-2xs">
         <div className="divide-y">
           {tree.map((node) => {
             if (node.kind === "leaf") {
@@ -463,7 +516,7 @@ export function StructuredPanel({
             );
           })}
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 }

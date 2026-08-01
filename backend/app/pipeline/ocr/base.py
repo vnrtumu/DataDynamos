@@ -32,21 +32,45 @@ class OCREngine(ABC):
         self.device = device or settings.ocr_device
 
     @abstractmethod
-    def _ocr_pages(self, doc_id: str, pages: list[Path]) -> tuple[list[OCRPage], list[str]]:
+    def _ocr_pages(self, doc_id: str, pages: list[Path], progress_cb=None) -> tuple[list[OCRPage], list[str]]:
         """Run the engine over each page PNG. Returns (pages, warnings).
 
         Implementations set ``page``, ``text``, ``blocks``, ``tables`` and
         (optionally) ``markdown_url`` on each :class:`OCRPage`; the base class
         recomputes ``char_count``/``avg_confidence`` and the document rollups.
+        Optionally call ``progress_cb(page_number)`` after each page completes.
         """
 
     def run(self, doc: Document) -> OCRResult:
         """Execute OCR over the document's rasterized pages and aggregate."""
         page_paths = [storage.page_path(doc.id, n) for n in range(1, doc.page_count + 1)]
 
+        # Write initial progress
+        storage.write_ocr_progress(doc.id, current_page=0, total_pages=doc.page_count, engine=self.name)
+
         start = perf_counter()
-        pages, warnings = self._ocr_pages(doc.id, page_paths)
+        pages, warnings = self._ocr_pages(
+            doc.id,
+            page_paths,
+            progress_cb=lambda pg, p_list: storage.write_ocr_progress(
+                doc.id,
+                current_page=pg,
+                total_pages=doc.page_count,
+                engine=self.name,
+                pages=[p.model_dump(mode="json") for p in p_list] if p_list else None,
+            ),
+        )
         latency_ms = int((perf_counter() - start) * 1000)
+
+        # Mark done
+        storage.write_ocr_progress(
+            doc.id,
+            current_page=doc.page_count,
+            total_pages=doc.page_count,
+            engine=self.name,
+            done=True,
+            pages=[p.model_dump(mode="json") for p in pages],
+        )
 
         all_confs: list[float] = []
         for page in pages:

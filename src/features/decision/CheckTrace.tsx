@@ -17,9 +17,9 @@ export function CheckTrace({ checks }: { checks: CheckType[] }) {
   }
   return (
     <ul className="space-y-1.5">
-      {checks.map((c) => (
+      {checks.map((c, i) => (
         <li
-          key={c.name}
+          key={`${c.name}-${i}`}
           className={cn(
             "flex items-start gap-3 rounded-lg border px-3 py-2",
             c.passed

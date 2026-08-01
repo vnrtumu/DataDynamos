@@ -56,9 +56,9 @@ export function SplitInspector() {
     highlight && highlight.page === displayPage ? highlight.rects : [];
 
   return (
-    <div className="grid flex-1 gap-4 lg:grid-cols-2">
-      {/* Left: source document */}
-      <div className="min-h-0">
+    <div className="grid flex-1 items-start gap-6 lg:grid-cols-2">
+      {/* Left: sticky source document, bounded to viewport */}
+      <div className="sticky top-14 flex flex-col" style={{ height: "calc(100vh - 3.5rem)" }}>
         <PageViewer
           pages={document.pages}
           page={displayPage}
@@ -69,11 +69,8 @@ export function SplitInspector() {
       </div>
 
       {/* Right: inspector tabs */}
-      <div className="flex min-h-0 flex-col">
-        <Tabs
-          defaultValue="structured"
-          className="flex min-h-0 flex-1 flex-col"
-        >
+      <div className="flex flex-col gap-4">
+        <Tabs defaultValue="structured" className="w-full">
           <TabsList className="grid grid-cols-5 w-full">
             <TabsTrigger value="ocr">OCR text</TabsTrigger>
             <TabsTrigger value="structured">Structured</TabsTrigger>
@@ -82,7 +79,7 @@ export function SplitInspector() {
             <TabsTrigger value="rationale" className="text-sky-400 font-semibold">Why OCR & LLM?</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="ocr" className="min-h-0 flex-1">
+          <TabsContent value="ocr" className="mt-3">
             {ocr ? (
               <OcrTextPanel ocr={ocr} page={displayPage} />
             ) : perStageStatus.ocr === "running" ? (
@@ -92,7 +89,7 @@ export function SplitInspector() {
             )}
           </TabsContent>
 
-          <TabsContent value="structured" className="min-h-0 flex-1">
+          <TabsContent value="structured" className="mt-3">
             {structure ? (
               <StructuredPanel
                 result={structure}
@@ -105,10 +102,7 @@ export function SplitInspector() {
             )}
           </TabsContent>
 
-          <TabsContent
-            value="decision"
-            className="min-h-0 flex-1 overflow-auto"
-          >
+          <TabsContent value="decision" className="mt-3">
             {decision ? (
               <DecisionCard decision={decision} />
             ) : perStageStatus.decide === "running" ? (
@@ -118,7 +112,7 @@ export function SplitInspector() {
             )}
           </TabsContent>
 
-          <TabsContent value="compare" className="min-h-0 flex-1">
+          <TabsContent value="compare" className="mt-3">
             <EngineComparison
               ocrByEngine={ocrByEngine}
               page={displayPage}
@@ -127,7 +121,7 @@ export function SplitInspector() {
             />
           </TabsContent>
 
-          <TabsContent value="rationale" className="min-h-0 flex-1">
+          <TabsContent value="rationale" className="mt-3">
             <ModelRationalePanel />
           </TabsContent>
         </Tabs>

@@ -39,7 +39,7 @@ EXTRACTION_CLASSES = {
 
 PROMPT = """\
 Extract healthcare claim fields from this CMS-1500 form according to official box numbers:
-insurance_type (Box 1), insured_id (Box 1a), patient_name (Box 2), patient_dob (Box 3),
+insurance_type (Box 1), insured_id (Box 1a), patient_name (Box 2 - Last Name, First Name, e.g. KARNO, YOLANA; ignore top header city/state text like CITY, UT), patient_dob (Box 3),
 signatures_on_file (Box 12/13), diagnosis_codes (Box 21 A-L), prior_auth_number (Box 23),
 provider_tax_id (Box 25), total_charge (Box 28), amount_paid (Box 29), balance_due (Box 30),
 billing_provider_name (Box 33), billing_provider_address (Box 33), billing_provider_npi (Box 33a),
@@ -119,9 +119,64 @@ def assemble_cms1500(flats: list[FlatExtraction], ctx: GroundingCtx) -> CMS1500F
     )
 
 
+def _examples() -> list:
+    import langextract as lx
+
+    return [
+        lx.data.ExampleData(
+            text=(
+                "HEALTH INSURANCE CLAIM FORM\n"
+                "1. MEDICARE  1a. INSURED'S I.D. NUMBER: 990086221-00\n"
+                "2. PATIENT'S NAME: KARNO, YOLANA\n"
+                "3. PATIENT'S BIRTH DATE: 12-02-1932  SEX: F\n"
+                "5. PATIENT'S ADDRESS: 4019 IDAHO AVE, KENNER LA 70065\n"
+                "12. SIGNATURE ON FILE  Date: 06-25-26\n"
+                "21. DIAGNOSIS: A. G31.84  B. F02.81\n"
+                "23. PRIOR AUTHORIZATION: AUTH-30757\n"
+                "25. FEDERAL TAX I.D.: 721216996\n"
+                "28. TOTAL CHARGE: $1675.00  29. AMOUNT PAID: $0.00  30. BALANCE DUE: $1675.00\n"
+                "33. BILLING PROVIDER: Kim E VanGeffen PhD  NPI: 1396827531\n"
+                "24. 07/16/25 11 96116 A B $175.00 1 NPI 1396827531"
+            ),
+            extractions=[
+                lx.data.Extraction(extraction_class="insurance_type", extraction_text="MEDICARE"),
+                lx.data.Extraction(extraction_class="insured_id", extraction_text="990086221-00"),
+                lx.data.Extraction(extraction_class="patient_name", extraction_text="KARNO, YOLANA"),
+                lx.data.Extraction(extraction_class="patient_dob", extraction_text="12-02-1932"),
+                lx.data.Extraction(
+                    extraction_class="patient_address",
+                    extraction_text="4019 IDAHO AVE, KENNER LA 70065",
+                ),
+                lx.data.Extraction(extraction_class="signatures_on_file", extraction_text="SIGNATURE ON FILE"),
+                lx.data.Extraction(extraction_class="diagnosis_codes", extraction_text="G31.84, F02.81"),
+                lx.data.Extraction(extraction_class="prior_auth_number", extraction_text="AUTH-30757"),
+                lx.data.Extraction(extraction_class="provider_tax_id", extraction_text="721216996"),
+                lx.data.Extraction(extraction_class="total_charge", extraction_text="$1675.00"),
+                lx.data.Extraction(extraction_class="amount_paid", extraction_text="$0.00"),
+                lx.data.Extraction(extraction_class="balance_due", extraction_text="$1675.00"),
+                lx.data.Extraction(extraction_class="billing_provider_name", extraction_text="Kim E VanGeffen PhD"),
+                lx.data.Extraction(extraction_class="billing_provider_npi", extraction_text="1396827531"),
+                lx.data.Extraction(
+                    extraction_class="service_line",
+                    extraction_text="07/16/25 11 96116 A B $175.00 1 NPI 1396827531",
+                    attributes={
+                        "dos": "07/16/25",
+                        "pos": "11",
+                        "cpt": "96116",
+                        "diag_pointer": "A B",
+                        "charge": "175.00",
+                        "units": "1",
+                        "rendering_npi": "1396827531",
+                    },
+                ),
+            ],
+        )
+    ]
+
+
 SPEC = DocTypeSpec(
     prompt=PROMPT,
-    examples_factory=lambda: [],
+    examples_factory=_examples,
     extraction_classes=EXTRACTION_CLASSES,
     field_model=CMS1500Fields,
     assemble=assemble_cms1500,
