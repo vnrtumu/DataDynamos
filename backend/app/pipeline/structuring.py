@@ -68,6 +68,8 @@ def run_structuring(
         if claim_pages:
             full_text = "\n\n".join(claim_pages)
 
+    ocr_json_str = _build_ocr_json_payload(ocr_result, full_text)
+
     ctx = GroundingCtx(full_text=full_text, ocr_result=ocr_result)
 
     start = perf_counter()
@@ -78,7 +80,7 @@ def run_structuring(
     else:
         try:
             flats, artifact = _structure_langextract(
-                spec, full_text, model_id=target_model, ocr_conf=ocr_result.avg_confidence
+                spec, ocr_json_str, model_id=target_model, ocr_conf=ocr_result.avg_confidence
             )
             model = target_model
         except Exception as exc:
@@ -144,10 +146,50 @@ def run_structuring(
 # --- providers ----------------------------------------------------------------
 
 
+def _build_ocr_json_payload(ocr_result: OCRResult, full_text: str) -> str:
+    """Serialize document OCR output into a structured JSON payload fed directly to LLMs for extraction."""
+    import json
+    pages = []
+    for p in ocr_result.pages:
+        blocks = [
+            {
+                "text": b.text,
+                "bbox": list(b.bbox) if b.bbox else None,
+                "confidence": b.confidence,
+                "label": b.label,
+            }
+            for b in p.blocks
+        ]
+        tables = [
+            {
+                "markdown": t.markdown,
+                "rows": t.n_rows,
+                "cols": t.n_cols,
+            }
+            for t in p.tables
+        ]
+        pages.append({
+            "page_number": p.page,
+            "text": p.text,
+            "blocks": blocks,
+            "tables": tables,
+        })
+
+    payload = {
+        "document_id": ocr_result.document_id,
+        "ocr_engine": ocr_result.engine_name,
+        "total_pages": len(ocr_result.pages),
+        "avg_ocr_confidence": ocr_result.avg_confidence,
+        "full_text": full_text,
+        "pages": pages,
+    }
+    return json.dumps(payload, indent=2)
+
+
 def _structure_langextract(
-    spec, full_text: str, model_id: str = "", ocr_conf: float | None = None
+    spec, ocr_json_input: str, model_id: str = "", ocr_conf: float | None = None
 ) -> tuple[list[FlatExtraction], str]:
-    """Run LangExtract against OpenRouter and normalize to FlatExtraction[]."""
+    """Run LangExtract against OpenRouter with structured OCR JSON input and normalize to FlatExtraction[]."""
     if not settings.openrouter_api_key:
         raise ValueError("OPENROUTER_API_KEY is not set; the langextract provider needs it.")
 
@@ -157,7 +199,12 @@ def _structure_langextract(
     from langextract.factory import ModelConfig
 
     # Self-Learning HITL Feedback Loop: Read operator corrections and append as learned rules
-    prompt = spec.prompt
+    prompt = spec.prompt + (
+        "\n\n### Input Data Format:\n"
+        "You are provided with a structured OCR document JSON payload containing `full_text`, per-page `text`, "
+        "`blocks` (with bounding box coordinates & labels), and Markdown `tables`. "
+        "Extract all requested healthcare claim fields accurately from this structured JSON document payload."
+    )
     memory_path = Path("data/feedback_memory.json")
     if memory_path.exists():
         try:
@@ -184,7 +231,7 @@ def _structure_langextract(
         },
     )
     annotated = lx.extract(
-        text_or_documents=full_text,
+        text_or_documents=ocr_json_input,
         prompt_description=prompt,
         examples=spec.examples_factory(),
         config=config,

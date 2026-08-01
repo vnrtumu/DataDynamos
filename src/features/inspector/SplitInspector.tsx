@@ -5,6 +5,7 @@ import { rectsForField } from "@/lib/grounding";
 import { usePipelineContext } from "@/features/pipeline/PipelineContext";
 import { PageViewer } from "@/features/inspector/PageViewer";
 import { OcrTextPanel } from "@/features/inspector/OcrTextPanel";
+import { OcrJsonPanel } from "@/features/inspector/OcrJsonPanel";
 import { StructuredPanel } from "@/features/inspector/StructuredPanel";
 import { EngineComparison } from "@/features/inspector/EngineComparison";
 import { DecisionCard } from "@/features/decision/DecisionCard";
@@ -71,12 +72,13 @@ export function SplitInspector() {
       {/* Right: inspector tabs */}
       <div className="flex flex-col gap-4">
         <Tabs defaultValue="structured" className="w-full">
-          <TabsList className="grid grid-cols-5 w-full">
+          <TabsList className="grid grid-cols-6 w-full">
             <TabsTrigger value="ocr">OCR text</TabsTrigger>
+            <TabsTrigger value="ocr-json">JSON Structure</TabsTrigger>
             <TabsTrigger value="structured">Structured</TabsTrigger>
             <TabsTrigger value="decision">Decision</TabsTrigger>
             <TabsTrigger value="compare">Compare</TabsTrigger>
-            <TabsTrigger value="rationale" className="text-sky-400 font-semibold">Why OCR & LLM?</TabsTrigger>
+            <TabsTrigger value="rationale" className="text-sky-400 font-semibold text-xs truncate">Why OCR & LLM?</TabsTrigger>
           </TabsList>
 
           <TabsContent value="ocr" className="mt-3">
@@ -84,6 +86,16 @@ export function SplitInspector() {
               <OcrTextPanel ocr={ocr} page={displayPage} />
             ) : perStageStatus.ocr === "running" ? (
               <Pending label="Running OCR…" />
+            ) : (
+              <Empty label="OCR has not run yet." />
+            )}
+          </TabsContent>
+
+          <TabsContent value="ocr-json" className="mt-3">
+            {ocr ? (
+              <OcrJsonPanel ocr={ocr} page={displayPage} />
+            ) : perStageStatus.ocr === "running" ? (
+              <Pending label="Generating OCR JSON payload..." />
             ) : (
               <Empty label="OCR has not run yet." />
             )}
