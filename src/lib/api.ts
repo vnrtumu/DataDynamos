@@ -120,6 +120,38 @@ export async function deleteAllDocuments(): Promise<void> {
   await request<void>("/documents", { method: "DELETE" });
 }
 
+/**
+ * Download the benchmark report (overall metrics + per-page cost analysis) as an
+ * .xlsx file and save it locally. Blob-aware: `request<T>` only parses JSON.
+ */
+export async function downloadBenchmarkReport(): Promise<void> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE_URL}/reports/benchmark.xlsx`);
+  } catch {
+    throw new ApiError(0, "Cannot reach the backend — is it running on :8000?");
+  }
+  if (!res.ok) {
+    let detail = `${res.status} ${res.statusText}`;
+    try {
+      const data = (await res.json()) as { detail?: string };
+      if (data?.detail) detail = data.detail;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new ApiError(res.status, detail);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "benchmark_report.xlsx";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 // --- persisted stage results (GET; 404 when a stage hasn't run) ---------------
 
 export async function getPrescan(id: string): Promise<QualityReport> {

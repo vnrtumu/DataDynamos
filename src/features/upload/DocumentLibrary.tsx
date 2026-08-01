@@ -3,7 +3,7 @@
 // UploadView only mounts when no document is open, returning here via "New
 // document" re-runs this fetch and surfaces freshly ingested docs.
 import { useCallback, useEffect, useState } from 'react';
-import { FileText, Loader2, ReceiptText, Trash2 } from 'lucide-react';
+import { FileSpreadsheet, FileText, Loader2, ReceiptText, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -21,6 +21,7 @@ import {
   ApiError,
   deleteAllDocuments,
   deleteDocument,
+  downloadBenchmarkReport,
   fileUrl,
   listDocuments,
 } from '@/lib/api';
@@ -190,6 +191,7 @@ export function DocumentLibrary() {
     () => new Set(),
   );
   const [deletingAll, setDeletingAll] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   // Used by the Retry button and the post-delete resync (both event-driven, so a
   // synchronous loading flip here is fine).
@@ -253,6 +255,22 @@ export function DocumentLibrary() {
     [load],
   );
 
+  const handleExport = useCallback(async () => {
+    setExporting(true);
+    try {
+      await downloadBenchmarkReport();
+      toast.success('Benchmark report downloaded', {
+        description: 'benchmark_report.xlsx (metrics + cost analysis)',
+      });
+    } catch (e) {
+      const msg =
+        e instanceof ApiError ? e.message : 'Could not export benchmark report.';
+      toast.error('Export failed', { description: msg });
+    } finally {
+      setExporting(false);
+    }
+  }, []);
+
   const handleDeleteAll = useCallback(async () => {
     setDeletingAll(true);
     try {
@@ -303,6 +321,23 @@ export function DocumentLibrary() {
           <span className="text-xs text-muted-foreground">
             {docs.length} total
           </span>
+          <button
+            type="button"
+            onClick={() => void handleExport()}
+            disabled={exporting || deletingAll}
+            className={cn(
+              'inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-muted-foreground transition-all',
+              'hover:bg-brand/10 hover:text-brand focus-visible:ring-3 focus-visible:ring-brand/20 focus-visible:outline-none',
+              (exporting || deletingAll) && 'pointer-events-none opacity-50',
+            )}
+          >
+            {exporting ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="size-3.5" />
+            )}
+            Benchmark report
+          </button>
           <AlertDialog>
             <AlertDialogTrigger
               disabled={deletingAll}

@@ -122,6 +122,18 @@ def worst(*verdicts: Verdict) -> Verdict:
 
 from app.schemas import AccuracyMetrics, CostSummary  # noqa: E402
 
+# Per-page OCR engine unit costs (USD). Single source of truth, shared with the
+# benchmark report's cost analysis sheet.
+ENGINE_UNIT_COSTS: dict[str, float] = {
+    "paddleocr": 0.0002,
+    "paddle": 0.0002,
+    "pytesseract": 0.0001,
+    "tesseract": 0.0001,
+    "docling": 0.0005,
+    "qwen-vl": 0.0030,
+    "mock": 0.0001,
+}
+
 
 def compute_cost_summary(
     doc_type: object | None,
@@ -142,16 +154,7 @@ def compute_cost_summary(
 
     preprocessing_cost = round(page_count * 0.0001, 5)
 
-    engine_cost_map = {
-        "paddleocr": 0.0002,
-        "paddle": 0.0002,
-        "pytesseract": 0.0001,
-        "tesseract": 0.0001,
-        "docling": 0.0005,
-        "qwen-vl": 0.0030,
-        "mock": 0.0001,
-    }
-    unit_ocr_cost = engine_cost_map.get(engine_name.lower(), 0.0002)
+    unit_ocr_cost = ENGINE_UNIT_COSTS.get(engine_name.lower(), 0.0002)
     ocr_engine_cost = round(page_count * unit_ocr_cost, 5)
 
     vlm_cost = 0.0035 if vlm_used else 0.0
