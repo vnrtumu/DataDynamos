@@ -77,7 +77,6 @@ function Leaf({
     leaf.fv.grounding?.alignment &&
     leaf.fv.grounding.alignment !== "ungrounded";
 
-<<<<<<< HEAD
   const handleSave = () => {
     onUpdateValue(leaf.path, editValue);
     setIsEditing(false);
@@ -85,30 +84,22 @@ function Leaf({
 
   const isEdited = Boolean((leaf.fv as Record<string, unknown>).isEdited);
 
-=======
->>>>>>> origin/feature/mani-v0.1
   return (
     <div
       onMouseEnter={() => onHover(leaf.path)}
       onMouseLeave={() => onHover(null)}
       className={cn(
-<<<<<<< HEAD
         "group flex items-center justify-between gap-3 rounded-lg px-3 py-2 transition-colors",
         groundable
           ? "cursor-pointer hover:bg-brand/[0.06]"
           : "hover:bg-muted/50",
         indent && "ml-4",
-=======
-        "group flex items-center justify-between gap-2 rounded-md px-2 py-1 text-xs transition-colors",
-        groundable ? "cursor-pointer hover:bg-brand/5" : "hover:bg-muted/40",
->>>>>>> origin/feature/mani-v0.1
       )}
     >
       <div className="flex min-w-0 items-center gap-1.5">
         {indent && (
           <CornerDownRight className="size-3 text-muted-foreground/40 shrink-0" />
         )}
-<<<<<<< HEAD
         <span className="text-sm text-muted-foreground">{leaf.label}</span>
       </div>
 
@@ -184,8 +175,6 @@ function Leaf({
             />
           </>
         )}
-      </div>
-    </div>
       </div>
     </div>
   );
