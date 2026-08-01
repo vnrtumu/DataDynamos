@@ -78,8 +78,8 @@ class Settings(BaseSettings):
         "California",
     ]
 
-    # Browser origins allowed to call the API (Vite dev server by default).
-    cors_origins: list[str] = ["http://localhost:5173"]
+    # Browser origins allowed to call the API (allow all for production deployments).
+    cors_origins: list[str] = ["*"]
 
     model_config = SettingsConfigDict(
         env_file=".env",

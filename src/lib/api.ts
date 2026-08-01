@@ -12,7 +12,10 @@ import type {
 } from "@/lib/types";
 
 const API_BASE_URL: string =
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+  import.meta.env.VITE_API_BASE_URL ||
+  (typeof window !== "undefined" && window.location.hostname === "localhost"
+    ? "http://localhost:8000"
+    : "https://datadynamos.onrender.com");
 
 export interface HealthResponse {
   status: string;
@@ -63,7 +66,7 @@ async function request<T>(path: string, opts: RequestOpts = {}): Promise<T> {
   try {
     res = await fetch(`${API_BASE_URL}${path}${qs}`, { method, headers, body, signal });
   } catch {
-    throw new ApiError(0, "Cannot reach the backend — is it running on :8000?");
+    throw new ApiError(0, `Cannot reach backend at ${API_BASE_URL}`);
   }
   if (!res.ok) {
     let detail = `${res.status} ${res.statusText}`;
