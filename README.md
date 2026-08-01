@@ -5,15 +5,40 @@
 
 ---
 
-## 🌟 Overview & Key Innovations
+## 🌟 Overview & Key Architectural Innovations
 
-DataDynamos is an enterprise-grade, zero-retraining platform for processing healthcare forms (CMS-1500, UB-04, Unstructured Claims, Commercial Invoices, and Legal Contracts).
+DataDynamos is an enterprise-grade, zero-retraining platform engineered to process healthcare forms (**CMS-1500**, **UB-04**, **Unstructured Medical Claims**), **Commercial Invoices**, and **Legal Contracts**.
 
-1. **7-Stage End-to-End Pipeline**: Pre-scan quality check -> AI format classifier -> Dynamic multi-engine OCR -> LangExtract LLM structurer -> Deterministic rule audit -> Decision reconciliation -> Self-learning HITL feedback memory loop.
-2. **Cost-Optimized VLM Escalation Routing**: 97% of machine-printed claim forms run on zero-cost CPU OCR engines (PaddleOCR / PyTesseract at $0.0001–$0.0002/pg). High-cost Vision AI (Qwen3-VL-235B at $0.0030/pg) is invoked conditionally only when block OCR confidence drops below 80%.
-3. **Structured JSON LLM Ingestion**: Converts raw OCR into spatial JSON with bounding box coordinates (`bbox`), text blocks, and Markdown tables before passing to OpenRouter LLMs (DeepSeek-v4, GPT-4o, Claude 3.5 Sonnet).
-4. **Deterministic Compliance Guardrails**: Python rule engine enforces 10-digit NPI Luhn checksums (80840 US prefix), ICD-10-CM diagnosis formatting, CPT procedure codes, and UB-04 revenue charges math balance ($\sum \text{Revenue Lines} = \text{Total Charges}$). Deterministic rules take precedence over LLM reasoning to eliminate hallucinations.
-5. **Self-Learning HITL Feedback Loop**: Operator inline field corrections are saved to `data/feedback_memory.json` and injected into future LLM extraction prompts—achieving continuous learning without retraining ML weights.
+### 1. 7-Stage End-to-End Autonomous Pipeline
+```
+[ Stage 1: Pre-scan ] ➔ [ Stage 2: Classifier ] ➔ [ Stage 3: OCR Engine ] ➔ [ Stage 4: LLM Structurer ] ➔ [ Stage 5: Rule Audit ] ➔ [ Stage 6: Decision Agent ] ➔ [ Stage 7: HITL Loop ]
+```
+- **Stage 1 (Pre-scan Quality)**: OpenCV deskew (±25°), DPI normalization (200 DPI), and advisory blur/contrast checks.
+- **Stage 2 (Format Classifier)**: Auto-detects Tier A-D document formats (CMS-1500 Single/Multi, UB-04, Unstructured Claims, Invoices, Contracts).
+- **Stage 3 (Multi-Engine OCR)**: Orchestrates PaddleOCR (Default PP-OCRv4 CPU), PyTesseract (v5.3), Docling (Deep Layout Parsing), and Qwen3-VL-235B (Vision AI).
+- **Stage 4 (LLM Field Structurer)**: Serializes OCR output into a structured JSON payload fed directly to LLMs via the LangExtract framework over OpenRouter.
+- **Stage 5 (Rule Audit Engine)**: Deterministic compliance guardrails (NPI Luhn 10-digit check, ICD-10-CM format audit, CPT code checks, UB-04 revenue charges math balance).
+- **Stage 6 (Decision Agent)**: Reconciles deterministic code guardrails with LLM judgment into final verdicts (`approve`, `needs_review`, `flag`). Auto-triggers immediately after structuring completes.
+- **Stage 7 (Self-Learning HITL Loop)**: Human-in-the-Loop inline field corrections persist to `data/feedback_memory.json` and inject learned prompt memory into future extractions without ML retraining.
+
+### 2. Default PaddleOCR (`paddleocr`) & VLM Escalation
+- **Default Engine**: PaddleOCR (`paddleocr`) is set as default across backend and frontend for zero-cost, high-speed CPU execution (~1.2s per page).
+- **Conditional VLM Escalation**: High-cost Vision AI (Qwen3-VL-235B at $0.0030/pg) is invoked conditionally only when block OCR confidence drops below 80%.
+
+### 3. Always-Fed Structured JSON Payload (`_build_ocr_json_payload`)
+- OCR output is serialized into a rich structured JSON payload containing document metadata, page blocks with exact bounding box coordinates (`bbox`), text block labels, confidence scores, and Markdown tables (`| REV | CHARGE |`).
+- Passed into `lx.extract(text_or_documents=full_text, ...)` so LLMs extract fields with precise spatial and structural context.
+
+### 4. Interactive Inspector Tabs & JSON Structure Panel
+- **Dedicated JSON Inspector Tab**: The frontend Split Inspector features a dedicated **JSON** tab (`OcrJsonPanel.tsx`) alongside `OCR text`, `Structured`, `Decision`, `Compare`, and `Why OCR & LLM?`.
+- Includes live JSON text search/filtering and a one-click **Copy Structured JSON** button with toast notification.
+
+### 5. Rule Defining Settings & Rule Meanings Glossary
+- **Interactive Rule Audit Glossary**: Comprehensive glossary inside **Rule Defining Settings** explaining all system rules (`patient_identity_match [ANSI A1]`, `billing_npi_nppes_active [ANSI B1]`, `revenue_charges_balance`, `charge_balance [ANSI D2]`, `total_math`, `duplicate_invoice_no`).
+- Live category filtering (Healthcare, Invoices, Contracts, Pre-flight Quality) and instant keyword search.
+
+### 6. Architecture PDF Export
+- Dedicated **Architecture** view with a one-click **Download Architecture Specification (PDF)** button that exports a styled print-ready A4 technical specification.
 
 ---
 
@@ -47,9 +72,26 @@ make install
 cp backend/.env.example backend/.env
 # Edit backend/.env and set OPENROUTER_API_KEY=...
 
-# 3. Start development server (Backend on :8000 + Frontend on :5173)
+# 3. Pre-load local Docling models (once before demo)
+make warm
+
+# 4. Start development server (Backend on :8000 + Frontend on :5173)
 make dev
 ```
+
+---
+
+## ⚙️ Environment Variables (`backend/.env`)
+
+| Variable | Default | Description |
+| :--- | :--- | :--- |
+| `OPENROUTER_API_KEY` | *(Required)* | API key for OpenRouter LLM/VLM calls. |
+| `OCR_DEFAULT_ENGINE` | `paddleocr` | Default OCR engine (`paddleocr` \| `pytesseract` \| `docling` \| `qwen-vl`). |
+| `STRUCTURING_MODEL` | `deepseek/deepseek-v4-flash` | LLM model for LangExtract structuring. |
+| `DECISION_MODEL` | `deepseek/deepseek-v4-flash` | Reasoning model for the Decision Agent. |
+| `STRUCTURING_PROVIDER` | `langextract` | Structuring framework (`langextract` \| `mock`). |
+| `DECISION_PROVIDER` | `llm` | Decision agent provider (`llm` \| `mock`). |
+| `OCR_DEVICE` | `cpu` | Compute device (`cpu` \| `gpu` \| `mps`). |
 
 ---
 
@@ -67,21 +109,17 @@ make dev
 
 ## 📦 Submission Deliverables Package Structure
 
-The submission package script generates the exact required submission structure in `submission_package/Name_HealthcareAIHackathon/`:
-
-```
-Name_HealthcareAIHackathon/
-├── 01_Executive_Summary.pdf
-├── 02_Architecture.pdf
-├── 03_Demo_Script_and_Walkthrough.md (Script for 03_Demo.mp4)
-└── 05_Benchmark.xlsx
-```
-
-To re-generate all PDF and Excel benchmark deliverables:
+Generate all required PDF and Excel submission deliverables using the automated generator:
 
 ```bash
 cd backend && uv run python scripts/generate_submission_deliverables.py
 ```
+
+Generated structure in `backend/submission_package/Name_HealthcareAIHackathon/`:
+- `01_Executive_Summary.pdf` (Executive Summary Report)
+- `02_Architecture.pdf` (System Architecture PDF)
+- `03_Demo_Script_and_Walkthrough.md` (10-Min Video Demo Script)
+- `05_Benchmark.xlsx` (Excel Benchmark Report with Cost Breakdown)
 
 ---
 
