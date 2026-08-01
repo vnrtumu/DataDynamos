@@ -1,5 +1,5 @@
 import React from "react";
-import { Sparkles, Bot, Cpu, Zap, Code2, Check, ShieldCheck } from "lucide-react";
+import { Sparkles, Bot, Cpu, Zap, Check, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type LlmModelOption =
@@ -7,8 +7,7 @@ export type LlmModelOption =
   | "gpt-4o"
   | "claude-3.5-sonnet"
   | "qwen-2.5-72b"
-  | "small-vision-vlm"
-  | "mock";
+  | "small-vision-vlm";
 
 interface ModelConfig {
   value: LlmModelOption;
@@ -54,13 +53,6 @@ const LLM_MODELS: ModelConfig[] = [
     cost: "$0.0002/pg",
     icon: Zap,
   },
-  {
-    value: "mock",
-    label: "Mock Structurer",
-    subLabel: "Offline Rule Fallback",
-    cost: "$0.0000/pg",
-    icon: Code2,
-  },
 ];
 
 export function LlmSelect({
@@ -73,7 +65,7 @@ export function LlmSelect({
   disabled?: boolean;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
       {LLM_MODELS.map((m) => {
         const Icon = m.icon;
         const selected = value === m.value;

@@ -24,6 +24,11 @@ from app.schemas import OCRBlock, OCRPage, OCRTable
 
 from .base import OCREngine
 
+# Sentinel: raised when OpenRouter returns HTTP 402 (not enough credits).
+# Caught in _ocr_pages to trigger a silent fallback to PaddleOCR.
+class _InsufficientCreditsError(Exception):
+    """Raised when OpenRouter rejects the request due to insufficient credits."""
+
 _SYSTEM_PROMPT = (
     "You are a precise OCR engine. Transcribe the supplied document page to clean "
     "Markdown, preserving the original reading order. Render any tables as Markdown "
@@ -32,6 +37,10 @@ _SYSTEM_PROMPT = (
     "Markdown."
 )
 _USER_PROMPT = "Transcribe this page to Markdown."
+
+# Capped at 2048 — enough for a dense CMS-1500 / invoice page while keeping
+# per-request cost low on OpenRouter free-tier credits (~$0.002 per page).
+_MAX_TOKENS = 2048
 
 
 def _extract_md_tables(markdown: str, page_no: int) -> list[OCRTable]:
@@ -86,7 +95,12 @@ class QwenVLEngine(OCREngine):
         )
 
     def _transcribe(self, client, path: Path) -> str:
-        """One chat-completion: page image in, faithful Markdown out."""
+        """One chat-completion: page image in, faithful Markdown out.
+
+        Uses a capped max_tokens to avoid burning OpenRouter credits on a single
+        page. A CMS-1500 form rarely exceeds 1200 tokens; 2048 gives comfortable
+        headroom. On a 402 (insufficient credits) the caller falls back to PaddleOCR.
+        """
         b64 = base64.b64encode(path.read_bytes()).decode("ascii")
         data_uri = f"data:image/png;base64,{b64}"
         try:
@@ -103,16 +117,43 @@ class QwenVLEngine(OCREngine):
                     },
                 ],
                 temperature=0,
+                max_tokens=_MAX_TOKENS,
             )
-        except Exception as exc:  # noqa: BLE001 — surface as a clean 400, not a 500
+        except Exception as exc:  # noqa: BLE001
+            exc_str = str(exc)
+            # 402 = insufficient credits — raise a specific sentinel so _ocr_pages
+            # can transparently fall back to PaddleOCR instead of failing hard.
+            if "402" in exc_str or "credits" in exc_str.lower():
+                raise _InsufficientCreditsError(
+                    f"Qwen-VL OCR request failed (insufficient credits): {exc}"
+                ) from exc
             raise ValueError(f"Qwen-VL OCR request failed: {exc}") from exc
         return response.choices[0].message.content or ""
 
     def _ocr_pages(self, doc_id: str, pages: list[Path], progress_cb=None) -> tuple[list[OCRPage], list[str]]:
         client = self._client()
         out: list[OCRPage] = []
+        _paddle_fallback_active = False  # once triggered, stay on paddle for remaining pages
         for page_no, path in enumerate(pages, start=1):
-            markdown = self._transcribe(client, path)
+            try:
+                if _paddle_fallback_active:
+                    raise _InsufficientCreditsError("fallback active")
+                markdown = self._transcribe(client, path)
+            except _InsufficientCreditsError:
+                # Transparently fall back to PaddleOCR — no crash, no silent data loss.
+                import warnings
+                warnings.warn(
+                    "Qwen-VL: insufficient OpenRouter credits — falling back to PaddleOCR for this page.",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+                _paddle_fallback_active = True
+                from app.pipeline.ocr.paddle import PaddleEngine
+                paddle = PaddleEngine()
+                paddle_result, _ = paddle._ocr_pages(doc_id, [path], progress_cb)
+                if paddle_result:
+                    out.extend(paddle_result)
+                continue
 
             markdown_url: str | None = None
             if markdown:

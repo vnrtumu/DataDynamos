@@ -13,14 +13,18 @@ export function formatPct(v?: number | null): string {
   return `${Math.round(v * 100)}%`;
 }
 
-/** ISO timestamp -> "May 31, 2026". Invalid/unparseable input -> "". */
+/** ISO timestamp -> "May 31, 2026, 8:24 PM" (in local timezone). Invalid/unparseable input -> "". */
 export function formatDate(iso: string): string {
-  const d = new Date(iso);
+  // Ensure the timestamp is treated as UTC (backend may omit the Z suffix)
+  const utcIso = iso && !iso.endsWith("Z") && !iso.includes("+") ? iso + "Z" : iso;
+  const d = new Date(utcIso);
   if (Number.isNaN(d.getTime())) return "";
   return d.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
     year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   });
 }
 

@@ -1,5 +1,4 @@
-import React from "react";
-import { DollarSign, CheckCircle2, AlertTriangle, ShieldCheck } from "lucide-react";
+import { DollarSign, CheckCircle2, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
 interface CostAccuracyBadgeProps {

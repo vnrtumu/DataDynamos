@@ -1,6 +1,5 @@
 import { Table2, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { formatMs, formatPct, confidenceTone } from "@/lib/format";
 import type { OCRResult } from "@/lib/types";
@@ -13,8 +12,8 @@ export function OcrTextPanel({ ocr, page }: { ocr: OCRResult; page: number }) {
   const tables = current?.tables ?? [];
 
   return (
-    <div className="flex h-full flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="flex flex-col gap-3 h-[calc(100vh-10rem)]">
+      <div className="flex flex-wrap items-center gap-2 shrink-0">
         <Badge variant="secondary" className="font-mono">
           {ocr.engine_name} {ocr.engine_version}
         </Badge>
@@ -44,7 +43,7 @@ export function OcrTextPanel({ ocr, page }: { ocr: OCRResult; page: number }) {
       </div>
 
       {ocr.warnings.length > 0 && (
-        <div className="space-y-1 rounded-lg border border-review/40 bg-review-muted/30 p-3 text-xs text-review-foreground">
+        <div className="space-y-1 rounded-lg border border-review/40 bg-review-muted/30 p-3 text-xs text-review-foreground shrink-0">
           {ocr.warnings.map((w, i) => (
             <div key={i} className="flex items-start gap-1.5">
               <TriangleAlert className="mt-0.5 size-3 shrink-0" />
@@ -54,25 +53,25 @@ export function OcrTextPanel({ ocr, page }: { ocr: OCRResult; page: number }) {
         </div>
       )}
 
-      <ScrollArea className="flex-1 rounded-xl border bg-muted/30">
-        <div className="space-y-4 p-4">
-          <pre className="font-mono text-xs leading-relaxed whitespace-pre-wrap text-foreground">
-            {current
-              ? current.text || "(no text extracted on this page)"
-              : `(Page ${page} is being scanned / pending OCR...)`}
-          </pre>
-          {tables.map((t, i) => (
-            <div key={i} className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">
-                Table · {t.n_rows}×{t.n_cols}
-              </p>
-              <pre className="overflow-x-auto rounded-md border bg-card p-3 font-mono text-xs">
+      <div className="flex-1 min-h-0 overflow-y-auto rounded-xl border bg-muted/30 p-4 space-y-4">
+        <pre className="font-mono text-xs leading-relaxed whitespace-pre-wrap text-foreground break-words">
+          {current
+            ? current.text || "(no text extracted on this page)"
+            : `(Page ${page} is being scanned / pending OCR...)`}
+        </pre>
+        {tables.map((t, i) => (
+          <div key={i} className="space-y-1.5 w-full">
+            <p className="text-xs font-semibold text-sky-400">
+              Table · {t.n_rows}×{t.n_cols}
+            </p>
+            <div className="w-full overflow-x-auto rounded-md border bg-card p-3">
+              <pre className="font-mono text-[11px] leading-tight whitespace-pre text-foreground inline-block min-w-max">
                 {t.markdown}
               </pre>
             </div>
-          ))}
-        </div>
-      </ScrollArea>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

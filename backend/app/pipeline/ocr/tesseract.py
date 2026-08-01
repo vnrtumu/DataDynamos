@@ -30,7 +30,10 @@ class PyTesseractEngine(OCREngine):
         except ImportError:
             pass
 
-        for idx, page_path in enumerate(pages, start=1):
+        from concurrent.futures import ThreadPoolExecutor
+
+        def _scan_one(item: tuple[int, Path]) -> OCRPage:
+            idx, page_path = item
             blocks: list[OCRBlock] = []
             page_text_lines: list[str] = []
 
@@ -77,17 +80,24 @@ class PyTesseractEngine(OCREngine):
                 else 0.90
             )
 
-            ocr_pages.append(
-                OCRPage(
-                    page=idx,
-                    text=full_text,
-                    blocks=blocks,
-                    tables=[],
-                    avg_confidence=avg_conf,
-                    char_count=len(full_text),
-                )
+            return OCRPage(
+                page=idx,
+                text=full_text,
+                blocks=blocks,
+                tables=[],
+                avg_confidence=avg_conf,
+                char_count=len(full_text),
             )
-            if progress_cb:
-                progress_cb(idx, ocr_pages)
+
+        items = list(enumerate(pages, start=1))
+        max_workers = min(4, len(items)) or 1
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(_scan_one, item) for item in items]
+            for future in futures:
+                page_res = future.result()
+                ocr_pages.append(page_res)
+                ocr_pages.sort(key=lambda p: p.page)
+                if progress_cb:
+                    progress_cb(page_res.page, ocr_pages)
 
         return ocr_pages, warnings

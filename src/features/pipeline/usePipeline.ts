@@ -53,6 +53,7 @@ export interface PipelineState {
   perStageStatus: Record<StageKey, StageStatus>;
   perStageTiming: Partial<Record<StageKey, number>>;
   activeEngine: OcrEngine;
+  activeLlm: string;
   docType: DocType;
   ingesting: boolean;
   error: { stage: StageKey; message: string } | null;
@@ -76,6 +77,7 @@ function initialState(): PipelineState {
     perStageStatus: idleStatus(),
     perStageTiming: {},
     activeEngine: "docling",
+    activeLlm: "deepseek-v4",
     docType: "cms1500",
     ingesting: false,
     error: null,
@@ -86,6 +88,7 @@ type Action =
   | { type: "RESET" }
   | { type: "SET_DOC_TYPE"; docType: DocType }
   | { type: "SET_ACTIVE_ENGINE"; engine: OcrEngine }
+  | { type: "SET_ACTIVE_LLM"; model: string }
   | { type: "INGEST_START" }
   | { type: "INGEST_DONE"; document: DocumentDetail }
   | { type: "INGEST_ERROR" }
@@ -99,6 +102,7 @@ type Action =
       engine: OcrEngine;
       setActive: boolean;
     }
+  | { type: "PARTIAL_OCR"; result: OCRResult }
   | { type: "STRUCTURE_DONE"; result: StructuredResult; timing: number }
   | { type: "DECIDE_DONE"; result: DecisionResult; timing: number }
   | {
@@ -123,6 +127,8 @@ function reducer(state: PipelineState, action: Action): PipelineState {
       };
     case "SET_DOC_TYPE":
       return { ...state, docType: action.docType };
+    case "SET_ACTIVE_LLM":
+      return { ...state, activeLlm: action.model };
     case "SET_ACTIVE_ENGINE": {
       const cached = state.ocrByEngine[action.engine] ?? null;
       return {
@@ -251,11 +257,13 @@ function errMessage(e: unknown): string {
 export interface UsePipeline extends PipelineState {
   setDocType: (t: DocType) => void;
   setActiveEngine: (e: OcrEngine) => void;
+  setActiveLlm: (model: string) => void;
   setPartialOcr: (result: OCRResult) => void;
   ingestFile: (file: File) => Promise<void>;
   openDocument: (id: string) => Promise<void>;
   runStage: (stage: StageKey) => Promise<void>;
   runEngineComparison: () => Promise<void>;
+  reRunPipeline: (fromStage?: StageKey, engineOverride?: OcrEngine, docTypeOverride?: DocType) => Promise<void>;
   reset: () => void;
 }
 
@@ -439,12 +447,38 @@ export function usePipeline(): UsePipeline {
     execStage,
   ]);
 
+  const reRunPipeline = useCallback(
+    async (fromStage: StageKey = "ocr", engineOverride?: OcrEngine, docTypeOverride?: DocType) => {
+      if (!state.document) return;
+      const engine = engineOverride ?? state.activeEngine;
+      const dt = docTypeOverride ?? state.docType;
+      const startIndex = STAGE_ORDER.indexOf(fromStage);
+      for (let i = startIndex; i < STAGE_ORDER.length; i++) {
+        const stage = STAGE_ORDER[i];
+        const ok = await execStage(state.document.id, stage, {
+          engine,
+          docType: dt,
+          setActive: true,
+        });
+        if (!ok) {
+          dispatch({ type: "STAGE_BLOCKED", stages: STAGE_ORDER.slice(i + 1) });
+          return;
+        }
+      }
+    },
+    [state.document, state.activeEngine, state.docType, execStage],
+  );
+
   const setDocType = useCallback(
     (t: DocType) => dispatch({ type: "SET_DOC_TYPE", docType: t }),
     [],
   );
   const setActiveEngine = useCallback(
     (e: OcrEngine) => dispatch({ type: "SET_ACTIVE_ENGINE", engine: e }),
+    [],
+  );
+  const setActiveLlm = useCallback(
+    (m: string) => dispatch({ type: "SET_ACTIVE_LLM", model: m }),
     [],
   );
   const setPartialOcr = useCallback(
@@ -458,22 +492,26 @@ export function usePipeline(): UsePipeline {
       ...state,
       setDocType,
       setActiveEngine,
+      setActiveLlm,
       setPartialOcr,
       ingestFile,
       openDocument,
       runStage,
       runEngineComparison,
+      reRunPipeline,
       reset,
     }),
     [
       state,
       setDocType,
       setActiveEngine,
+      setActiveLlm,
       setPartialOcr,
       ingestFile,
       openDocument,
       runStage,
       runEngineComparison,
+      reRunPipeline,
       reset,
     ],
   );

@@ -61,7 +61,7 @@ function DocumentCard({
   onDelete: (id: string) => void;
   deleting: boolean;
 }) {
-  const Icon = doc.doc_type === 'contract' ? FileText : ReceiptText;
+  const Icon = (doc.doc_type as string) === 'contract' ? FileText : ReceiptText;
   // Thumbs may not exist yet (freshly ingested) or may 404; fall back to the icon
   // instead of the browser's broken-image glyph.
   const [thumbFailed, setThumbFailed] = useState(false);

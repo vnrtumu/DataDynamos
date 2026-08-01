@@ -10,6 +10,7 @@ dependencies = [
     "pydantic>=2.13.4",
     "pydantic-settings>=2.14.1",
     "pymupdf>=1.27.2.3",
+    "pytesseract>=0.3.13",
     "python-multipart>=0.0.29",
     "sqlmodel>=0.0.38",
     "uvicorn[standard]>=0.48.0",

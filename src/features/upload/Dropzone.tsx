@@ -2,8 +2,6 @@ import { useCallback, useRef, useState } from "react";
 import { UploadCloud } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const ACCEPT = "image/*,application/pdf,.pdf,.png,.jpg,.jpeg,.tif,.tiff,.bmp,.webp";
-
 export function Dropzone({
   onFile,
   disabled,

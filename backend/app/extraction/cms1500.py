@@ -22,14 +22,24 @@ EXTRACTION_CLASSES = {
     "patient_name",
     "patient_dob",
     "patient_address",
+    "insured_name",
+    "insured_address",
+    "referring_provider_name",
+    "referring_provider_npi",
+    "illness_date",
     "signatures_on_file",
     "diagnosis_codes",
     "prior_auth_number",
     "rendering_provider_npi",
     "provider_tax_id",
+    "patient_account_no",
+    "accept_assignment",
     "total_charge",
     "amount_paid",
     "balance_due",
+    "service_facility_name",
+    "service_facility_address",
+    "service_facility_npi",
     "billing_provider_name",
     "billing_provider_address",
     "billing_provider_npi",
@@ -39,9 +49,13 @@ EXTRACTION_CLASSES = {
 
 PROMPT = """\
 Extract healthcare claim fields from this CMS-1500 form according to official box numbers:
-insurance_type (Box 1), insured_id (Box 1a), patient_name (Box 2 - Last Name, First Name, e.g. KARNO, YOLANA; ignore top header city/state text like CITY, UT), patient_dob (Box 3),
+insurance_type (Box 1), insured_id (Box 1a), patient_name (Box 2 - Last Name, First Name), patient_dob (Box 3),
+patient_address (Box 5 - Street, City, State, Zip), insured_name (Box 4), insured_address (Box 7),
+referring_provider_name (Box 17), referring_provider_npi (Box 17b), illness_date (Box 14),
 signatures_on_file (Box 12/13), diagnosis_codes (Box 21 A-L), prior_auth_number (Box 23),
-provider_tax_id (Box 25), total_charge (Box 28), amount_paid (Box 29), balance_due (Box 30),
+provider_tax_id (Box 25), patient_account_no (Box 26), accept_assignment (Box 27),
+total_charge (Box 28), amount_paid (Box 29), balance_due (Box 30),
+service_facility_name (Box 32), service_facility_address (Box 32), service_facility_npi (Box 32a),
 billing_provider_name (Box 33), billing_provider_address (Box 33), billing_provider_npi (Box 33a),
 rendering_provider_npi (Box 24J), and service_line (Box 24, with attributes: dos, pos, cpt, diag_pointer, charge, units, rendering_npi).
 """
@@ -67,13 +81,23 @@ class CMS1500Fields(BaseModel):
     patient_name: FieldValue
     patient_dob: FieldValue
     patient_address: FieldValue
+    insured_name: FieldValue
+    insured_address: FieldValue
+    referring_provider_name: FieldValue
+    referring_provider_npi: FieldValue
+    illness_date: FieldValue
     signatures_on_file: FieldValue
     diagnosis_codes: FieldValue
     prior_auth_number: FieldValue
     provider_tax_id: FieldValue
+    patient_account_no: FieldValue
+    accept_assignment: FieldValue
     total_charge: FieldValue
     amount_paid: FieldValue
     balance_due: FieldValue
+    service_facility_name: FieldValue
+    service_facility_address: FieldValue
+    service_facility_npi: FieldValue
     billing_provider_name: FieldValue
     billing_provider_address: FieldValue
     billing_provider_npi: FieldValue
@@ -103,13 +127,23 @@ def assemble_cms1500(flats: list[FlatExtraction], ctx: GroundingCtx) -> CMS1500F
         patient_name=scalar_field(grouped, "patient_name", ctx, to_text),
         patient_dob=scalar_field(grouped, "patient_dob", ctx, to_text),
         patient_address=scalar_field(grouped, "patient_address", ctx, to_text),
+        insured_name=scalar_field(grouped, "insured_name", ctx, to_text),
+        insured_address=scalar_field(grouped, "insured_address", ctx, to_text),
+        referring_provider_name=scalar_field(grouped, "referring_provider_name", ctx, to_text),
+        referring_provider_npi=scalar_field(grouped, "referring_provider_npi", ctx, to_text),
+        illness_date=scalar_field(grouped, "illness_date", ctx, to_text),
         signatures_on_file=scalar_field(grouped, "signatures_on_file", ctx, to_text),
         diagnosis_codes=scalar_field(grouped, "diagnosis_codes", ctx, to_text),
         prior_auth_number=scalar_field(grouped, "prior_auth_number", ctx, to_text),
         provider_tax_id=scalar_field(grouped, "provider_tax_id", ctx, to_text),
+        patient_account_no=scalar_field(grouped, "patient_account_no", ctx, to_text),
+        accept_assignment=scalar_field(grouped, "accept_assignment", ctx, to_text),
         total_charge=scalar_field(grouped, "total_charge", ctx, to_number),
         amount_paid=scalar_field(grouped, "amount_paid", ctx, to_number),
         balance_due=scalar_field(grouped, "balance_due", ctx, to_number),
+        service_facility_name=scalar_field(grouped, "service_facility_name", ctx, to_text),
+        service_facility_address=scalar_field(grouped, "service_facility_address", ctx, to_text),
+        service_facility_npi=scalar_field(grouped, "service_facility_npi", ctx, to_text),
         billing_provider_name=scalar_field(grouped, "billing_provider_name", ctx, to_text),
         billing_provider_address=scalar_field(grouped, "billing_provider_address", ctx, to_text),
         billing_provider_npi=scalar_field(grouped, "billing_provider_npi", ctx, to_text),

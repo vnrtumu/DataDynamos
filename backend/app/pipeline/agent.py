@@ -16,6 +16,7 @@ citations are built here in code; the LLM supplies qualitative judgment + reason
 from __future__ import annotations
 
 import json
+import logging
 from time import perf_counter
 
 from app.config import settings
@@ -182,7 +183,21 @@ def _decide_llm(
         )
         payload = json.loads(response.choices[0].message.content or "{}")
     except Exception as exc:  # noqa: BLE001 — degrade gracefully, surface as a warning
-        return "needs_review", 0.3, ["LLM judgment unavailable"], [f"decision LLM error: {exc}"]
+        exc_str = str(exc)
+        # Log so the server-side terminal shows the real cause (credits, key, network…)
+        logging.getLogger(__name__).warning(
+            "Decision LLM call failed (model=%s): %s", settings.decision_model, exc_str
+        )
+        # Detect the most common root causes and give a human-readable hint
+        if "402" in exc_str or "credits" in exc_str.lower():
+            hint = "Insufficient OpenRouter credits — add credits at openrouter.ai/settings/credits"
+        elif "401" in exc_str or "api key" in exc_str.lower() or "unauthorized" in exc_str.lower():
+            hint = "Invalid or missing OPENROUTER_API_KEY — check your .env file"
+        elif "timeout" in exc_str.lower() or "timed out" in exc_str.lower():
+            hint = "OpenRouter request timed out — try again or switch model"
+        else:
+            hint = f"LLM error: {exc_str[:200]}"
+        return "needs_review", 0.3, [f"LLM judgment unavailable: {hint}"], [f"decision LLM error: {exc_str}"]
 
     decision = payload.get("decision")
     if decision not in _VALID_DECISIONS:

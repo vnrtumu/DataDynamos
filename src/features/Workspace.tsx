@@ -10,6 +10,8 @@ import { SplitInspector } from "@/features/inspector/SplitInspector";
 import { STAGE_LABEL, type StageKey } from "@/features/pipeline/usePipeline";
 import { API_BASE_URL } from "@/lib/api";
 
+import { ModelOverridesToolbar } from "@/features/pipeline/ModelOverridesToolbar";
+
 const STAGE_DESCRIPTIONS: Record<StageKey, string> = {
   prescan: "Deskewing & quality checking",
   ocr: "Extracting text with OCR engine",
@@ -22,6 +24,7 @@ interface OcrProgress {
   total_pages: number;
   engine: string;
   done: boolean;
+  pages?: any[];
 }
 
 export function Workspace() {
@@ -30,7 +33,7 @@ export function Workspace() {
   const [ocrProgress, setOcrProgress] = useState<OcrProgress | null>(null);
 
   if (!document) return null;
-  const DocIcon = document.doc_type === "contract" ? FileText : ReceiptText;
+  const DocIcon = (document.doc_type as string) === "contract" ? FileText : ReceiptText;
 
   const activeStage = (Object.entries(perStageStatus) as [StageKey, string][]).find(
     ([, s]) => s === "running"
@@ -104,6 +107,9 @@ export function Workspace() {
         </Button>
       </div>
 
+      {/* Post-Processing Model & Engine Switcher Toolbar */}
+      <ModelOverridesToolbar />
+
       {/* Live "Now Scanning" banner */}
       {activeStage && (
         <div className="flex items-center gap-3 rounded-xl border border-sky-500/30 bg-sky-500/[0.06] px-4 py-2.5 shadow-sm animate-in fade-in slide-in-from-top-1 duration-300">
@@ -120,10 +126,10 @@ export function Workspace() {
               <span className="text-xs font-semibold text-sky-400">
                 {STAGE_LABEL[activeStage]} — {STAGE_DESCRIPTIONS[activeStage]}
               </span>
-              {/* Live page counter for OCR stage */}
+              {/* Live parallel page counter for OCR stage */}
               {activeStage === "ocr" && ocrProgress && ocrProgress.total_pages > 1 && !ocrProgress.done && (
                 <span className="rounded-md border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-mono font-bold text-sky-300">
-                  Page {ocrProgress.current_page + 1} / {ocrProgress.total_pages}
+                  ⚡ Scanning {ocrProgress.pages?.length || ocrProgress.current_page || 1} of {ocrProgress.total_pages} pages (Parallel Threads)
                 </span>
               )}
             </div>

@@ -1,5 +1,5 @@
 import React from "react";
-import { Sparkles, Cpu, Layers, ScanText, Code2, Check } from "lucide-react";
+import { Sparkles, Cpu, Layers, ScanText, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { OcrEngine } from "@/lib/types";
 
@@ -40,13 +40,6 @@ const ENGINES: EngineOption[] = [
     cost: "$0.0030/pg",
     icon: ScanText,
   },
-  {
-    value: "mock",
-    label: "Mock Engine",
-    subLabel: "Offline Instant",
-    cost: "$0.0000/pg",
-    icon: Code2,
-  },
 ];
 
 export function EngineSelect({
@@ -59,7 +52,7 @@ export function EngineSelect({
   disabled?: boolean;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-2 lg:grid-cols-4">
       {ENGINES.map((eng) => {
         const Icon = eng.icon;
         const selected = value === eng.value;

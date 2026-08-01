@@ -38,7 +38,10 @@ class PaddleOCREngine(OCREngine):
             except Exception as e:
                 warnings.append(f"PaddleOCR init fallback: {e}")
 
-        for idx, page_path in enumerate(pages, start=1):
+        from concurrent.futures import ThreadPoolExecutor
+
+        def _scan_one(item: tuple[int, Path]) -> OCRPage:
+            idx, page_path = item
             blocks: list[OCRBlock] = []
             page_text_lines: list[str] = []
 
@@ -59,17 +62,17 @@ class PaddleOCREngine(OCREngine):
                 except Exception as exc:
                     warnings.append(f"PaddleOCR execution warning on page {idx}: {exc}")
 
-            # Fallback to Docling Engine for real OCR extraction if PaddleOCR is not installed
+            # Fallback to PyTesseract for fast OCR extraction if PaddleOCR returns empty text
             if not page_text_lines:
                 try:
-                    from app.pipeline.ocr.docling import DoclingEngine
-                    docling_pages, docling_warns = DoclingEngine()._ocr_pages(doc_id, [page_path])
-                    if docling_pages and docling_pages[0].blocks:
-                        blocks.extend(docling_pages[0].blocks)
-                        page_text_lines = [b.text for b in blocks]
-                        warnings.extend(docling_warns)
+                    from app.pipeline.ocr.tesseract import PyTesseractEngine
+                    tess_engine = PyTesseractEngine()
+                    tess_pages, _ = tess_engine._ocr_pages(doc_id, [page_path])
+                    if tess_pages and tess_pages[0].text.strip():
+                        page_text_lines = [line.strip() for line in tess_pages[0].text.splitlines() if line.strip()]
+                        blocks = tess_pages[0].blocks
                 except Exception as exc:
-                    warnings.append(f"PaddleOCR fallback to Docling failed: {exc}")
+                    warnings.append(f"PaddleOCR fallback warning: {exc}")
 
             full_text = "\n".join(page_text_lines)
             avg_conf = (
@@ -78,17 +81,24 @@ class PaddleOCREngine(OCREngine):
                 else 0.92
             )
 
-            ocr_pages.append(
-                OCRPage(
-                    page=idx,
-                    text=full_text,
-                    blocks=blocks,
-                    tables=[],
-                    avg_confidence=avg_conf,
-                    char_count=len(full_text),
-                )
+            return OCRPage(
+                page=idx,
+                text=full_text,
+                blocks=blocks,
+                tables=[],
+                avg_confidence=avg_conf,
+                char_count=len(full_text),
             )
-            if progress_cb:
-                progress_cb(idx, ocr_pages)
+
+        items = list(enumerate(pages, start=1))
+        max_workers = min(4, len(items)) or 1
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(_scan_one, item) for item in items]
+            for future in futures:
+                page_res = future.result()
+                ocr_pages.append(page_res)
+                ocr_pages.sort(key=lambda p: p.page)
+                if progress_cb:
+                    progress_cb(page_res.page, ocr_pages)
 
         return ocr_pages, warnings

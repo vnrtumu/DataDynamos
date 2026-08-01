@@ -41,8 +41,6 @@ function engineDisplayName(engine: OcrEngine): string {
       return "Docling (Deep Layout)";
     case "qwen-vl":
       return "Qwen3-VL (Vision AI)";
-    case "mock":
-      return "Mock OCR (Offline)";
     default:
       return engine;
   }

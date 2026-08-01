@@ -48,7 +48,7 @@ def _converter():
         from docling.document_converter import DocumentConverter, PdfFormatOption
 
         opts = PdfPipelineOptions(do_ocr=True, do_table_structure=True)
-        opts.table_structure_options.mode = TableFormerMode.ACCURATE
+        opts.table_structure_options.mode = TableFormerMode.FAST
         opts.accelerator_options = AcceleratorOptions(
             device=_accelerator_device(settings.ocr_device)
         )

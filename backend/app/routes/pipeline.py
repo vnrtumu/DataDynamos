@@ -241,7 +241,7 @@ async def structure_document(
     ocr_result = OCRResult(**ocr_data)
 
     result = await _run_stage(
-        "Structuring", settings.llm_timeout_s, run_structuring, doc, ocr_result, resolved_type, provider
+        "Structuring", settings.llm_timeout_s, run_structuring, doc, ocr_result, resolved_type, provider, llm_model
     )
 
     # ``run`` is non-None here: an OCR result was found above, which requires a run.

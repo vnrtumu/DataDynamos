@@ -7,7 +7,7 @@ export type DocType =
   | "ub04"
   | "unstructured_claim";
 
-export type OcrEngine = "paddleocr" | "pytesseract" | "qwen-vl" | "docling" | "mock";
+export type OcrEngine = "paddleocr" | "pytesseract" | "qwen-vl" | "docling";
 
 export interface CostSummary {
   tier: string;
@@ -163,6 +163,21 @@ export interface FieldValue {
   grounding: Grounding | null;
 }
 
+export interface CostSummary {
+  prescan_cost: number;
+  ocr_cost: number;
+  vlm_router_cost: number;
+  total_cost_per_page: number;
+  total_cost_per_1m_pages: number;
+  document_tier: string;
+}
+
+export interface AccuracyMetrics {
+  field_level_accuracy: number;
+  rule_pass_rate: number;
+  combined_accuracy: number;
+}
+
 export interface StructuredResult {
   document_id: string;
   status: DocumentStatus;
@@ -177,6 +192,8 @@ export interface StructuredResult {
   latency_ms: number;
   fallback_used: boolean;
   raw_artifact_url: string | null;
+  cost_summary?: CostSummary | null;
+  accuracy_metrics?: AccuracyMetrics | null;
 }
 
 // --- decision ----------------------------------------------------------------

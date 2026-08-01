@@ -71,8 +71,6 @@ export function ModelRationalePanel() {
                   "Selected for complex multi-page document layout parsing, extracting hierarchical table bounding boxes."}
                 {currentEngine === "qwen-vl" &&
                   "Selected for Tier D Unstructured Claims, utilizing joint vision-text VLM embeddings."}
-                {currentEngine === "mock" &&
-                  "Selected for instant offline zero-latency testing."}
               </p>
             </div>
 
@@ -154,30 +152,70 @@ export function ModelRationalePanel() {
               </div>
             </div>
 
-            {/* Rule Engine Safeguards for CMS-1500, UB-04, Unstructured */}
+            {/* Tier Definitions & Human Review Workflow */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="rounded-lg border p-3 bg-card/60 space-y-1.5">
+                <div className="font-semibold text-sky-400 text-[11px] uppercase tracking-wider">
+                  Document Tier Definitions
+                </div>
+                <div className="space-y-1 text-[11px] text-muted-foreground">
+                  <div className="flex justify-between border-b border-border/40 pb-0.5">
+                    <span className="font-bold text-foreground">Tier A</span>
+                    <span>Single-page CMS-1500 (OCR + Rules)</span>
+                  </div>
+                  <div className="flex justify-between border-b border-border/40 pb-0.5">
+                    <span className="font-bold text-foreground">Tier B</span>
+                    <span>CMS-1500 + Attachments (Filtered)</span>
+                  </div>
+                  <div className="flex justify-between border-b border-border/40 pb-0.5">
+                    <span className="font-bold text-foreground">Tier C</span>
+                    <span>Single-page UB-04 (Table Extraction)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="font-bold text-foreground">Tier D</span>
+                    <span>Unstructured Claims / Bills (Vision LLM)</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border p-3 bg-card/60 space-y-1.5">
+                <div className="font-semibold text-purple-400 text-[11px] uppercase tracking-wider">
+                  Confidence & Human Review Path
+                </div>
+                <p className="text-muted-foreground leading-relaxed text-[11px]">
+                  Configurable Confidence Threshold (tuned per tier, default 85%).
+                  <br />
+                  <span className="font-bold text-foreground">High Conf (≥85%)</span> → Auto-Approve (STP)
+                  <br />
+                  <span className="font-bold text-foreground">Low Conf (&lt;85%)</span> → Vision AI Escalation → Still Uncertain? → <span className="text-purple-400 font-semibold">Stage 7 Human Review Queue</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Rule Engine Safeguards for Healthcare Standards */}
             <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3 space-y-2">
               <div className="font-semibold text-emerald-400 flex items-center gap-1.5">
-                <Bot className="size-4" /> CMS-1500 Official Rule Engine Guardrails & ANSI Reason Codes
+                <Bot className="size-4" /> Healthcare Standards & Business Rules Validation
               </div>
               <ul className="space-y-1.5 text-muted-foreground text-[11px]">
                 <li className="flex items-start gap-1.5">
-                  <span className="font-bold text-foreground">1. Patient Identity & Coverage [ANSI A1-A3]:</span>
+                  <span className="font-bold text-foreground">1. Patient Identity & Coverage:</span>
                   <span>Box 2 Name & Box 3 DOB registry match, Box 1a Insured ID active status check, Box 1 Plan type.</span>
                 </li>
                 <li className="flex items-start gap-1.5">
-                  <span className="font-bold text-foreground">2. Provider Validation [ANSI B1-B4]:</span>
-                  <span>Box 33a Billing NPI & Box 24J Rendering NPI 10-digit Luhn check, Box 25 Tax ID link, Box 33 Location.</span>
+                  <span className="font-bold text-foreground">2. Provider Validation:</span>
+                  <span>Box 33a Billing NPI & Box 24J Rendering NPI validation (Luhn checksum), Box 25 Tax ID link, Box 33 Location.</span>
                 </li>
                 <li className="flex items-start gap-1.5">
-                  <span className="font-bold text-foreground">3. Medical Coding Consistency [ANSI C1-C4]:</span>
+                  <span className="font-bold text-foreground">3. Medical Coding Consistency:</span>
                   <span>Box 21 ICD-10-CM format regex (<code className="font-mono text-emerald-400">^[A-Z][0-9][0-9A-Z](\.[0-9A-Z]{'{1,4}'})?$</code>), Box 24D CPT/HCPCS, Box 24E Diagnosis Pointer.</span>
                 </li>
                 <li className="flex items-start gap-1.5">
-                  <span className="font-bold text-foreground">4. Financial & Math Rules [ANSI D1-D3]:</span>
+                  <span className="font-bold text-foreground">4. Financial & Math Rules:</span>
                   <span>Line charge x units, <code className="font-mono text-emerald-400">Total Charge = Sum(Line Charges)</code>, and <code className="font-mono text-emerald-400">Balance Due = Total - Amount Paid</code>.</span>
                 </li>
                 <li className="flex items-start gap-1.5">
-                  <span className="font-bold text-foreground">5. Compliance & Decision [ANSI E1-E2]:</span>
+                  <span className="font-bold text-foreground">5. Compliance & Decision:</span>
                   <span>Box 12/13 Signature on File (SOF) check and Box 23 Prior Authorization log pre-approval.</span>
                 </li>
               </ul>
