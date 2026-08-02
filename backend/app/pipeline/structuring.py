@@ -257,6 +257,7 @@ def _structure_langextract(
         provider_kwargs={
             "api_key": settings.openrouter_api_key,
             "base_url": settings.structuring_base_url,
+            "timeout": settings.llm_timeout_s,
         },
     )
     annotated = lx.extract(
