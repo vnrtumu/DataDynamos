@@ -21,6 +21,50 @@ DataDynamos is an enterprise-grade, zero-retraining platform engineered to proce
 - **Stage 6 (Decision Agent)**: Reconciles deterministic code guardrails with LLM judgment into final verdicts (`approve`, `needs_review`, `flag`). Auto-triggers immediately after structuring completes.
 - **Stage 7 (Self-Learning HITL Loop)**: Human-in-the-Loop inline field corrections persist to `data/feedback_memory.json` and inject learned prompt memory into future extractions without ML retraining.
 
+```mermaid
+---
+config:
+  layout: elk
+---
+flowchart TD
+    input(["Incoming scan/page"]):::input --> classifier["1. Page Classifier<br/>Tier + form type"]:::classify
+
+    classifier --> tierAC["Tier A / C<br/>CMS-1500 or UB-04<br/>Known template"]:::template
+    classifier --> tierB["Tier B<br/>CMS-1500 + junk pages"]:::filter
+    classifier --> tierD["Tier D<br/>Unstructured<br/>No fixed template"]:::unstructured
+
+    tierAC --> prepAC["2. Preprocess<br/>Deskew, denoise, binarize<br/>OpenCV"]:::template
+    tierB --> relevance["Page-relevance filter<br/>Discard non-target pages"]:::filter
+    relevance --> prepAC
+    tierD --> prepD["2. Preprocess<br/>Deskew and denoise"]:::unstructured
+
+    prepAC --> fixedOCR["3. Template/anchor registration<br/>ORB feature matching<br/>Fixed-zone OCR<br/>PaddleOCR or Tesseract"]:::template
+    prepD --> layoutOCR["3. Layout-aware extraction model<br/>LayoutLM/Donut class<br/>No template"]:::unstructured
+
+    fixedOCR --> validation["4. Business-rule validation<br/>Regex and checksums: NPI, ICD-10, CPT<br/>Dates, dollar amounts, OCR confidence"]:::validate
+    layoutOCR --> validation
+
+    validation --> router{"5. Escalation router<br/>Validation pass?"}:::decision
+    router -->|Yes: accept field| aggregate["6. Aggregation and structured output<br/>JSON + audit trail"]:::output
+    router -->|No: crop region and escalate| slm["5a. Small vision model<br/>Cropped region<br/>GPU, lower cost"]:::escalate
+    slm -->|Low confidence| llm["5b. Large LLM/VLM<br/>Claude, GPT-4o, or Gemini<br/>Last resort"]:::escalate
+    slm -->|Accepted| aggregate
+    llm --> aggregate
+
+    aggregate --> hitl["7. HITL queue<br/>Residual low-confidence documents<br/>Corrections feed retraining"]:::hitl
+
+    classDef input fill:#ecfeff,stroke:#22d3ee,color:#164e63;
+    classDef classify fill:#eef2ff,stroke:#818cf8,color:#312e81;
+    classDef template fill:#f0fdfa,stroke:#2dd4bf,color:#134e4a;
+    classDef filter fill:#fff7ed,stroke:#fb923c,color:#7c2d12;
+    classDef unstructured fill:#f5f3ff,stroke:#a78bfa,color:#4c1d95;
+    classDef validate fill:#fefce8,stroke:#facc15,color:#713f12;
+    classDef decision fill:#fff1f2,stroke:#fb7185,color:#881337;
+    classDef escalate fill:#fdf4ff,stroke:#e879f9,color:#86198f;
+    classDef output fill:#f0fdf4,stroke:#4ade80,color:#166534;
+    classDef hitl fill:#fef2f2,stroke:#f87171,color:#991b1b;
+```
+
 ### 2. Default PaddleOCR (`paddleocr`) & VLM Escalation
 - **Default Engine**: PaddleOCR (`paddleocr`) is set as default across backend and frontend for zero-cost, high-speed CPU execution (~1.2s per page).
 - **Conditional VLM Escalation**: High-cost Vision AI (Qwen3-VL-235B at $0.0030/pg) is invoked conditionally only when block OCR confidence drops below 80%.
