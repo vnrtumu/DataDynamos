@@ -53,18 +53,54 @@ def run_decision(
     # 1. Authoritative, code-computed checks (rule set + shared confidence/quality gates).
     checks = get_ruleset(doc_type)(fields, ctx) + cross_cutting_checks(ctx)
 
-    # 2. Qualitative judgment from the provider (with graceful fallback if API key is missing).
+    # 2. Qualitative judgment from the provider (with graceful fallback across models).
     start = perf_counter()
     warnings: list[str] = []
-    if provider == "mock" or not settings.openrouter_api_key:
+    if provider == "mock":
         llm_decision, llm_conf, llm_reasons = "approve", 0.95, ["Automated rule engine approval"]
         model = "mock"
     else:
-        llm_decision, llm_conf, llm_reasons, llm_warnings = _decide_llm(
-            doc_type.value, fields, checks, ctx
-        )
-        warnings.extend(llm_warnings)
-        model = settings.decision_model
+        if not settings.openrouter_api_key:
+            raise ValueError(
+                "OPENROUTER_API_KEY is missing or credits completed. "
+                "Please configure OPENROUTER_API_KEY to use real LLM decision engine."
+            )
+
+        fallback_models = [
+            settings.decision_model,
+            "deepseek/deepseek-v4-flash",
+            "openai/gpt-4o",
+            "anthropic/claude-3.5-sonnet",
+            "qwen/qwen-2.5-72b-instruct",
+        ]
+        candidates = []
+        for m in fallback_models:
+            if m and m not in candidates:
+                candidates.append(m)
+
+        success = False
+        last_exc: Exception | None = None
+        for m in candidates:
+            try:
+                llm_decision, llm_conf, llm_reasons, llm_warnings = _decide_llm(
+                    doc_type.value, fields, checks, ctx, model_id=m
+                )
+                warnings.extend(llm_warnings)
+                model = m
+                success = True
+                if m != candidates[0]:
+                    warnings.append(f"Primary LLM decision model '{candidates[0]}' failed; fell back to '{m}'")
+                break
+            except Exception as exc:
+                last_exc = exc
+                err_str = str(exc).lower()
+                if any(k in err_str for k in ["402", "401", "insufficient", "credit", "payment", "unauthorized"]):
+                    raise ValueError(f"OpenRouter Credit Completion / API Key Error: {exc}") from exc
+
+        if not success:
+            raise ValueError(
+                f"All LLM decision models failed or credits completed. Last error: {last_exc}"
+            )
     latency_ms = int((perf_counter() - start) * 1000)
 
     # 3. Reconcile: code wins on hard failures; gates cap at needs_review.
@@ -154,35 +190,30 @@ def _reconcile(
 
 
 def _decide_llm(
-    doc_type: str, fields: dict, checks: list[Check], ctx: DecisionContext
+    doc_type: str, fields: dict, checks: list[Check], ctx: DecisionContext, model_id: str = ""
 ) -> tuple[Decision, float, list[str], list[str]]:
-    """Single OpenRouter call returning {decision, confidence, reasons}.
-
-    On any error (missing key, network, unparsable output) falls back to a cautious
-    ``needs_review`` plus a warning — never raises into the request path.
-    """
+    """Single OpenRouter call returning {decision, confidence, reasons}."""
     if not settings.openrouter_api_key:
         raise ValueError("OPENROUTER_API_KEY is not set; the llm decision provider needs it.")
 
-    try:
-        import openai  # lazy: optional dep
+    target = model_id or settings.decision_model
 
-        client = openai.OpenAI(
-            api_key=settings.openrouter_api_key, base_url=settings.decision_base_url
-        )
-        prompt = _build_prompt(doc_type, fields, checks, ctx)
-        response = client.chat.completions.create(
-            model=settings.decision_model,
-            messages=[
-                {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user", "content": prompt},
-            ],
-            response_format={"type": "json_object"},
-            temperature=0,
-        )
-        payload = json.loads(response.choices[0].message.content or "{}")
-    except Exception as exc:  # noqa: BLE001 — degrade gracefully, surface as a warning
-        return "needs_review", 0.3, ["LLM judgment unavailable"], [f"decision LLM error: {exc}"]
+    import openai  # lazy: optional dep
+
+    client = openai.OpenAI(
+        api_key=settings.openrouter_api_key, base_url=settings.decision_base_url
+    )
+    prompt = _build_prompt(doc_type, fields, checks, ctx)
+    response = client.chat.completions.create(
+        model=target,
+        messages=[
+            {"role": "system", "content": _SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ],
+        response_format={"type": "json_object"},
+        temperature=0,
+    )
+    payload = json.loads(response.choices[0].message.content or "{}")
 
     decision = payload.get("decision")
     if decision not in _VALID_DECISIONS:
