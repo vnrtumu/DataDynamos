@@ -83,8 +83,9 @@ docker-compose up --build
 
 ### Option B: Local Native Setup (macOS / Linux)
 
-Prerequisites: **Python 3.12**, [`uv`](https://docs.astral.sh/uv/), Node.js + [`pnpm`](https://pnpm.io/).
+Prerequisites: **Python 3.12**, [`uv`](https://docs.astral.sh/uv/) or standard `pip`, Node.js + [`pnpm`](https://pnpm.io/).
 
+#### Using `uv` (Recommended)
 ```bash
 # 1. Install all backend and frontend dependencies
 make install
@@ -97,6 +98,19 @@ cp backend/.env.example backend/.env
 make warm
 
 # 4. Start development server (Backend on :8000 + Frontend on :5173)
+make dev
+```
+
+#### Using `requirements.txt` (Standard `pip`)
+```bash
+# 1. Install backend dependencies via requirements.txt
+pip install -r requirements.txt
+
+# 2. Configure environment secrets
+cp backend/.env.example backend/.env
+# Edit backend/.env and set OPENROUTER_API_KEY=...
+
+# 3. Start development server (Backend on :8000 + Frontend on :5173)
 make dev
 ```
 
