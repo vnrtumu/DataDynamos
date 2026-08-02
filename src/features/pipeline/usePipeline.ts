@@ -267,6 +267,7 @@ export interface UsePipeline extends PipelineState {
   openDocument: (id: string) => Promise<void>;
   runStage: (stage: StageKey) => Promise<void>;
   runEngineComparison: () => Promise<void>;
+  reRunPipeline: () => Promise<void>;
   reset: () => void;
 }
 
@@ -462,6 +463,16 @@ export function usePipeline(): UsePipeline {
     execStage,
   ]);
 
+  const reRunPipeline = useCallback(async () => {
+    if (!state.document) return;
+    await runAll(
+      state.document.id,
+      state.activeEngine,
+      state.docType,
+      state.activeLlmModel,
+    );
+  }, [state.document, state.activeEngine, state.docType, state.activeLlmModel, runAll]);
+
   const setDocType = useCallback(
     (t: DocType) => dispatch({ type: "SET_DOC_TYPE", docType: t }),
     [],
@@ -491,6 +502,7 @@ export function usePipeline(): UsePipeline {
       openDocument,
       runStage,
       runEngineComparison,
+      reRunPipeline,
       reset,
     }),
     [
@@ -503,6 +515,7 @@ export function usePipeline(): UsePipeline {
       openDocument,
       runStage,
       runEngineComparison,
+      reRunPipeline,
       reset,
     ],
   );
