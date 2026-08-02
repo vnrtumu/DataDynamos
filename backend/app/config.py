@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     ocr_vlm_base_url: str = "https://openrouter.ai/api/v1"
     ocr_confidence_warn: float = 0.80  # avg block confidence below this -> warn.
     ocr_timeout_s: float = 600.0  # generous to absorb a cold model download.
-    llm_timeout_s: float = 120.0  # structuring + decision (network LLM).
+    llm_timeout_s: float = 300.0  # structuring + decision (network LLM).
 
     # Structuring layer (Phase 4). LangExtract turns OCR text into validated JSON;
     # the path is lazily imported, and the offline "mock" provider covers tests.

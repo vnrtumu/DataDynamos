@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { usePipelineContext } from "@/features/pipeline/PipelineContext";
 import { Stepper } from "@/features/pipeline/Stepper";
+import { BenchmarkSwitcher } from "@/features/pipeline/BenchmarkSwitcher";
 import { QualityReportPanel } from "@/features/pipeline/QualityReportPanel";
 import { SplitInspector } from "@/features/inspector/SplitInspector";
 import { STAGE_LABEL, type StageKey } from "@/features/pipeline/usePipeline";
@@ -103,6 +104,9 @@ export function Workspace() {
           New document
         </Button>
       </div>
+
+      {/* Benchmark Switcher Bar */}
+      <BenchmarkSwitcher />
 
       {/* Live "Now Scanning" banner */}
       {activeStage && (

@@ -1,7 +1,7 @@
 // Pipeline state machine: owns the document and stage results, and drives the
 // sequential auto-run (prescan -> ocr -> structure -> decide). The runner stops on
 // the first error and marks downstream stages "blocked" (avoids the backend's 409s).
-import { useCallback, useMemo, useReducer, useRef } from "react";
+import { useCallback, useMemo, useReducer, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   ApiError,
@@ -258,7 +258,11 @@ function errMessage(e: unknown): string {
   return "Unexpected error";
 }
 
+import type { LlmAlertState } from "@/components/ui/LlmAlertModal";
+
 export interface UsePipeline extends PipelineState {
+  llmAlert: LlmAlertState | null;
+  dismissLlmAlert: () => void;
   setDocType: (t: DocType) => void;
   setActiveEngine: (e: OcrEngine) => void;
   setLlmModel: (m: LlmModelOption) => void;
@@ -267,11 +271,14 @@ export interface UsePipeline extends PipelineState {
   openDocument: (id: string) => Promise<void>;
   runStage: (stage: StageKey) => Promise<void>;
   runEngineComparison: () => Promise<void>;
+  reRunPipeline: () => Promise<void>;
   reset: () => void;
 }
 
 export function usePipeline(): UsePipeline {
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
+  const [llmAlert, setLlmAlert] = useState<LlmAlertState | null>(null);
+  const dismissLlmAlert = useCallback(() => setLlmAlert(null), []);
 
   // Bumped on every openDocument call; lets a slow open bail out if the user has
   // since opened another document, so a stale fetch can't clobber the newer one.
@@ -321,7 +328,27 @@ export function usePipeline(): UsePipeline {
       } catch (e) {
         const message = errMessage(e);
         dispatch({ type: "STAGE_ERROR", stage, message });
-        toast.error(`${STAGE_LABEL[stage]} failed`, { description: message });
+
+        const msgLower = message.toLowerCase();
+        const isCreditOrKeyError =
+          (e instanceof ApiError && (e.status === 402 || e.status === 401)) ||
+          msgLower.includes("openrouter") ||
+          msgLower.includes("credit") ||
+          msgLower.includes("depleted") ||
+          msgLower.includes("api key") ||
+          msgLower.includes("payment");
+
+        if (isCreditOrKeyError) {
+          setLlmAlert({
+            open: true,
+            title: `LLM ${STAGE_LABEL[stage]} Stage Alert`,
+            message: `The ${STAGE_LABEL[stage]} stage requires an active OpenRouter API Key and credit balance.`,
+            details: message,
+            isCreditIssue: true,
+          });
+        } else {
+          toast.error(`${STAGE_LABEL[stage]} failed`, { description: message });
+        }
         return false;
       }
     },
@@ -462,6 +489,16 @@ export function usePipeline(): UsePipeline {
     execStage,
   ]);
 
+  const reRunPipeline = useCallback(async () => {
+    if (!state.document) return;
+    await runAll(
+      state.document.id,
+      state.activeEngine,
+      state.docType,
+      state.activeLlmModel,
+    );
+  }, [state.document, state.activeEngine, state.docType, state.activeLlmModel, runAll]);
+
   const setDocType = useCallback(
     (t: DocType) => dispatch({ type: "SET_DOC_TYPE", docType: t }),
     [],
@@ -483,6 +520,8 @@ export function usePipeline(): UsePipeline {
   return useMemo(
     () => ({
       ...state,
+      llmAlert,
+      dismissLlmAlert,
       setDocType,
       setActiveEngine,
       setLlmModel,
@@ -491,10 +530,13 @@ export function usePipeline(): UsePipeline {
       openDocument,
       runStage,
       runEngineComparison,
+      reRunPipeline,
       reset,
     }),
     [
       state,
+      llmAlert,
+      dismissLlmAlert,
       setDocType,
       setActiveEngine,
       setLlmModel,
@@ -503,6 +545,7 @@ export function usePipeline(): UsePipeline {
       openDocument,
       runStage,
       runEngineComparison,
+      reRunPipeline,
       reset,
     ],
   );
