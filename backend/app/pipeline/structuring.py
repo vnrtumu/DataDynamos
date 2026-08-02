@@ -71,21 +71,57 @@ def run_structuring(
     ctx = GroundingCtx(full_text=full_text, ocr_result=ocr_result)
 
     start = perf_counter()
-    if provider == "mock" or not settings.openrouter_api_key:
+    if provider == "mock":
         flats = _structure_mock(doc_type, full_text)
         artifact: str | None = None
         model = "mock"
     else:
-        try:
-            flats, artifact = _structure_langextract(
-                spec, full_text, model_id=target_model, ocr_conf=ocr_result.avg_confidence
+        if not settings.openrouter_api_key:
+            raise ValueError(
+                "OPENROUTER_API_KEY is missing or credits completed. "
+                "Please configure OPENROUTER_API_KEY to use real LLM structuring."
             )
-            model = target_model
-        except Exception as exc:
-            flats = _structure_mock(doc_type, full_text)
-            artifact = None
-            model = "mock (fallback)"
-            ctx.warnings.append(f"LangExtract fallback to mock due to error: {exc}")
+
+        fallback_models = [
+            "deepseek/deepseek-v4-flash",
+            "openai/gpt-4o",
+            "anthropic/claude-3.5-sonnet",
+            "qwen/qwen-2.5-72b-instruct",
+            "qwen/qwen-2.5-vl-7b-instruct",
+        ]
+        candidates = [target_model]
+        for m in fallback_models:
+            if m not in candidates:
+                candidates.append(m)
+
+        flats: list[FlatExtraction] | None = None
+        artifact: str | None = None
+        model: str = target_model
+        last_exc: Exception | None = None
+
+        for m in candidates:
+            try:
+                flats, artifact = _structure_langextract(
+                    spec, full_text, model_id=m, ocr_conf=ocr_result.avg_confidence
+                )
+                model = m
+                if m != target_model:
+                    ctx.warnings.append(
+                        f"Primary LLM model '{target_model}' failed ({last_exc}); automatically fell back to '{m}'"
+                    )
+                break
+            except Exception as exc:
+                last_exc = exc
+                err_str = str(exc).lower()
+                if any(k in err_str for k in ["402", "401", "insufficient", "credit", "payment", "unauthorized"]):
+                    raise ValueError(
+                        f"OpenRouter Credit Completion / API Key Error: {exc}"
+                    ) from exc
+
+        if flats is None:
+            raise ValueError(
+                f"All LLM structuring models failed or credits completed. Last error: {last_exc}"
+            )
 
     latency_ms = int((perf_counter() - start) * 1000)
 
