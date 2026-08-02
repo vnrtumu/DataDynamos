@@ -27,6 +27,8 @@ ENGINES: dict[str, type[OCREngine]] = {
     "mock": MockEngine,
 }
 
+FALLBACK_ORDER: list[str] = ["paddleocr", "docling", "pytesseract", "qwen-vl", "mock"]
+
 
 def available_engines() -> list[str]:
     """Names accepted by the OCR route's ``engine`` parameter."""
@@ -34,13 +36,36 @@ def available_engines() -> list[str]:
 
 
 def run_ocr(doc: Document, engine_name: str) -> OCRResult:
-    """Run the named engine over the document's pages, returning a normalized result."""
-    factory = ENGINES.get(engine_name)
-    if factory is None:
+    """Run the named engine over the document's pages with automatic fallback if primary fails."""
+    if engine_name not in ENGINES:
         raise ValueError(
             f"Unknown OCR engine '{engine_name}'. Available: {', '.join(ENGINES)}"
         )
-    return factory().run(doc)
+
+    primary = engine_name
+    candidates: list[str] = [primary]
+    for eng in FALLBACK_ORDER:
+        if eng in ENGINES and eng not in candidates:
+            candidates.append(eng)
+
+    last_error: Exception | None = None
+
+    for eng in candidates:
+        factory = ENGINES.get(eng)
+        if factory is None:
+            continue
+        try:
+            result = factory().run(doc)
+            if eng != primary:
+                result.warnings.append(
+                    f"Primary OCR engine '{primary}' failed ({last_error}); "
+                    f"automatically fell back to '{eng}'"
+                )
+            return result
+        except Exception as exc:
+            last_error = exc
+
+    raise RuntimeError(f"All OCR engines failed for document {doc.id}. Last error: {last_error}")
 
 
 def prewarm(engine_names: list[str], *, log=print) -> None:

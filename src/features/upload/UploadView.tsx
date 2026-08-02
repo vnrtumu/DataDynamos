@@ -77,35 +77,6 @@ export function UploadView() {
           </div>
         </CardHeader>
         <CardContent className="p-6 space-y-6">
-          {/* Automated Feature Badges Banner */}
-          <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="font-semibold text-xs text-emerald-400 flex items-center gap-1.5">
-                <CheckCircle2 className="size-4" /> Autonomous Processing Protocol Active
-              </div>
-              <Badge variant="outline" className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 font-mono text-[10px]">
-                Zero Intervention
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Document format classification (CMS-1500 Tier A/B, UB-04 Tier C, Unstructured Tier D) and OCR engine selection are handled automatically by the AI classifier during upload.
-            </p>
-            <div className="flex flex-wrap gap-2 pt-1">
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground bg-card px-2.5 py-1 rounded-md border">
-                <ShieldCheck className="size-3 text-emerald-400" /> Auto Tier Classifier
-              </span>
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground bg-card px-2.5 py-1 rounded-md border">
-                <Cpu className="size-3 text-sky-400" /> Smart Engine Router
-              </span>
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground bg-card px-2.5 py-1 rounded-md border">
-                <Sparkles className="size-3 text-purple-400" /> NPI & ICD-10 Rule Engine
-              </span>
-            </div>
-          </div>
-
-          {/* Primary Dropzone */}
-          <Dropzone onFile={ingestFile} disabled={ingesting} />
-
           {/* Advanced Manual Overrides Panel */}
           {showAdvanced && (
             <div className="rounded-xl border bg-muted/20 p-4 space-y-4">
@@ -146,6 +117,35 @@ export function UploadView() {
               </div>
             </div>
           )}
+
+          {/* Automated Feature Badges Banner */}
+          <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="font-semibold text-xs text-emerald-400 flex items-center gap-1.5">
+                <CheckCircle2 className="size-4" /> Autonomous Processing Protocol Active
+              </div>
+              <Badge variant="outline" className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 font-mono text-[10px]">
+                Zero Intervention
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Document format classification (CMS-1500 Tier A/B, UB-04 Tier C, Unstructured Tier D) and OCR engine selection are handled automatically by the AI classifier during upload.
+            </p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground bg-card px-2.5 py-1 rounded-md border">
+                <ShieldCheck className="size-3 text-emerald-400" /> Auto Tier Classifier
+              </span>
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground bg-card px-2.5 py-1 rounded-md border">
+                <Cpu className="size-3 text-sky-400" /> Smart Engine Router
+              </span>
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground bg-card px-2.5 py-1 rounded-md border">
+                <Sparkles className="size-3 text-purple-400" /> NPI & ICD-10 Rule Engine
+              </span>
+            </div>
+          </div>
+
+          {/* Primary Dropzone */}
+          <Dropzone onFile={ingestFile} disabled={ingesting} />
 
           {ingesting && (
             <div className="flex items-center justify-center gap-2 rounded-lg border bg-emerald-500/10 border-emerald-500/30 p-3 text-sm text-emerald-400 font-medium">
